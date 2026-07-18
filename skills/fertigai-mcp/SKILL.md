@@ -24,7 +24,7 @@ The workspace MCP exposes your fertig.ai workspace configuration as MCP tools, a
 | Secrets | secrets_list/create/update/delete | fertigai-secrets |
 | Conversations (read only) | conversations_list/get | fertigai-conversations |
 
-Load the per-domain skill for field details, workflows, and gotchas.
+Load the per-domain skill for field details, workflows, and gotchas. Functions and actions also share a JavaScript scripting environment (the `run(ctx)` contract and built-in primitives like `mail.send` and `llm.send`); that is documented in the **fertigai-scripting** skill.
 
 ## Conventions shared by every tool
 - **Public IDs** are prefixed and opaque: agents `agt_`, functions `fn_`, actions `act_`, secrets `sec_`, mail templates `mtpl_`, and similar. Always pass an id that a `list` or `get` returned; never invent one.
