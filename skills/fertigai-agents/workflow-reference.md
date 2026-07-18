@@ -1,17 +1,17 @@
 # Agent workflow and setting-group reference
 
-Companion to the `fertigai-agents` skill. This is the detailed shape of `config.workflow` (the conversation graph) and the nested setting groups. The whole `config` is validated as one object on `fertigai_agent_branch_update_config`, so the reliable way to author these is to `fertigai_agents_get` an agent, edit the returned `config`, and send it back.
+Companion to the `fertigai-agents` skill. This is the detailed shape of `config.workflow` (the conversation graph) and the nested setting groups. The whole `config` is validated as one object on the `config` section of `fertigai_agent_branch_configure`, so the reliable way to author these is to `fertigai_agents_get` an agent, edit the returned `config`, and send it back.
 
 ## workflow
 
 `config.workflow` is a directed graph:
 
 ```
-"workflow": { "enabled": true, "version": 2, "nodes": [ ... ], "edges": [ ... ] }
+"workflow": { "enabled": true, "version": 3, "nodes": [ ... ], "edges": [ ... ] }
 ```
 
 - `enabled`: when `false`, the agent runs a flat single-prompt conversation and the graph is ignored.
-- `version`: currently `2`. Older graphs are migrated up automatically on save.
+- `version`: currently `3`. Older graphs are migrated up automatically on read and save, so a config you read back is already at the current version.
 
 ### Node
 
@@ -20,7 +20,7 @@ Companion to the `fertigai-agents` skill. This is the detailed shape of `config.
   "data": { "type": "<node type>", ...node-specific fields } }
 ```
 
-The node's kind appears in TWO places and they must match: the node-level `type` AND `data.type`. The editor reads the kind from `data.type`, so a node whose `data` omits `type` will not render, and the backend rejects it. Always set `data.type` equal to the node-level `type`. The rest of `data` is node-specific (see the table); mirror the shape from an existing branch's config rather than inventing fields.
+The node's kind appears in TWO places: the node-level `type` AND `data.type`. The editor reads the kind from `data.type`. The backend automatically mirrors `data.type` from the node-level `type` on every read and save, so a node that omits or mismatches `data.type` is repaired rather than rejected, but always set `data.type` equal to the node-level `type` so the editor renders it correctly. The rest of `data` is node-specific (see the table); mirror the shape from an existing branch's config rather than inventing fields.
 
 ### The 8 node types
 
@@ -32,7 +32,7 @@ Every node's `data` includes `type` (equal to the node-level type) plus the node
 | `first_message` | speaks the welcome message | `label?` | exactly one; cannot be deleted; has NO incoming edge; exactly one outgoing edge to `start_agent`, `unconditional` |
 | `subagent` | a nested agent step with its own goal and optional overrides | `conversationGoal`, `overridePrompt`, `overrideFunctions?`, `overrideKnowledgeBases?`, `voiceId`, `model`, `eagerness`, `spellingPatience` | routing node; outgoing edges must be conditioned |
 | `say` | speaks a line, fixed or LLM-generated | `mode` (`"literal"`\|`"prompt"`), `text` (for literal), `prompt` (for prompt), `voiceId?` | at most one `unconditional` outgoing edge |
-| `function` | runs one attached function | `label?` (the function attachment is bound to the node, not in `data`) | requires exactly one attached function; can branch on a `result` edge (success/failure) |
+| `function` | runs one attached function | `label?` (the function attachment is bound to the node, not in `data`) | requires exactly one attached function, supplied via the `attachments` section of the same `fertigai_agent_branch_configure` call (see fertigai-attachments); can branch on a `result` edge (success/failure) |
 | `update_context` | sets dynamic variables | `updates: [{ variableName, value }]` | every `variableName` must be a declared dynamic variable |
 | `end_call` | ends the call | `label?` | terminal: no outgoing edges |
 | `transfer` | phone transfer | `routes: [{ number, condition, transferType, timeoutSecs }]` where `transferType` is `"COLD"` or `"ATTENDED"` | terminal when all routes are `COLD`; an `ATTENDED` route returns control, so outgoing edges are then allowed but must be `unconditional`; at least one route needs a non-empty `number` |
@@ -56,7 +56,7 @@ Every node's `data` includes `type` (equal to the node-level type) plus the node
 - `first_message` has no incoming edge and exactly one `unconditional` outgoing edge to `start_agent`.
 - No self-loops; no edges referencing a missing node; every node reachable.
 - Terminal nodes (`end_call`; an all-`COLD` `transfer`) have no outgoing edges.
-- A `function` node has exactly one attached function.
+- A `function` node has exactly one attached function, sent in the `attachments` section of the same configure call (a `function` node with no matching attachment is rejected; see fertigai-attachments).
 - `start_agent` and `subagent` outgoing edges are conditioned (no `unconditional`).
 - Every variable referenced by an expression edge or an `update_context` node is declared in `config.dynamic_variables`.
 
@@ -79,13 +79,14 @@ Seconds. `max_duration` auto-hangs up; `silence_timeout` re-prompts after silenc
 
 ### post_call_analysis
 ```
-{ "classification": { "enabled": true, "categories": [ { "key", "name", "options": [], "description" } ] },
-  "extracted_variables": { "enabled": true, "variables": [ { "key", "name", "type", "description" } ] },
+{ "classification": { "enabled": true, "categories": [ { "public_id", "key", "name", "options": [], "description" } ] },
+  "extracted_variables": { "enabled": true, "variables": [ { "public_id", "key", "name", "type", "description" } ] },
   "summary": { "enabled": true, "prompt_enabled": false, "prompt": "" },
   "actions_enabled": true }
 ```
 - `extracted_variables[].type`: `ANY` | `STRING` | `NUMBER` | `BOOLEAN` | `ENUM`.
 - `actions_enabled` triggers configured post-call actions after the call.
+- Each category and variable carries a `public_id`. Echo it back UNCHANGED on edit: the save reconciles by `public_id`, so a category or variable whose `public_id` is missing from the payload is deleted (and its stored classification history is dropped). Leave `public_id` empty only for a genuinely new category or variable.
 
 ### security
 ```
@@ -97,12 +98,12 @@ Max inbound calls per minute before rejecting.
 ```
 { "focus": true, "manipulation": true,
   "content": true,
-  "content_config": { "sexual": { "enabled": true, "threshold": "medium" }, "violence": {...}, "harassment": {...},
+  "content_config": { "sexual": { "enabled": true, "threshold": 2 }, "violence": {...}, "harassment": {...},
                       "self_harm": {...}, "profanity": {...}, "religion_or_politics": {...}, "medical_and_legal_information": {...} },
   "custom": false, "custom_rules": [ { "enabled": true, "name": "", "prompt": "" } ] }
 ```
 - `focus` refuses off-purpose topics; `manipulation` resists social engineering.
-- `content` is the master toggle; each of the 7 `content_config` categories is `{ enabled, threshold: "low"|"medium"|"high" }`.
+- `content` is the master toggle; each of the 7 `content_config` categories is `{ enabled, threshold }` where `threshold` is an integer: `1` (low), `2` (medium), or `3` (high) (`0` means unspecified).
 
 ### gdpr
 ```
