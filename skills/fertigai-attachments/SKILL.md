@@ -82,9 +82,9 @@ Each assignment extracts a value from the function's JSON result using a dot-not
 
 ## transfer_routes: transfer_to_number only
 ```json
-{ "number": "+15551234567", "condition": "customer asks for a human", "transfer_type": "COLD", "timeout_secs": 30 }
+{ "number": "+15551234567", "condition": "customer asks for a human", "transfer_type": "ATTENDED", "timeout_secs": 15 }
 ```
-`transfer_type` is `"COLD"` (unattended, connects directly) or `"ATTENDED"` (rings the destination first before connecting). `timeout_secs` is the maximum ring time for an attended transfer before the call returns to the agent; `0` uses the platform default. This field only applies to a `transfer_to_number` system-tool entry; other attachments leave it empty. These are the only two accepted values.
+`transfer_type` is `"COLD"` (unattended, connects directly) or `"ATTENDED"` (rings the destination first before connecting); these are the only two accepted values. `timeout_secs` is the maximum ring time for an `ATTENDED` transfer before the call returns to the agent; it defaults to `15` seconds when omitted (`0` is a literal zero, it does not select a default, so use `15` for the standard behavior). This field only applies to a `transfer_to_number` system-tool entry; other attachments leave it empty.
 
 ## Function nodes need a matching attachment
 A workflow `function` node runs exactly one attached function. If a branch's `config.workflow` has a `function` node, the same `fertigai_agent_branch_configure` call MUST include a matching entry under `attachments.functions.nodes["<that node's id>"]`, or the whole call is rejected. Set the workflow and its function-node attachments together in one call.
