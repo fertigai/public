@@ -16,12 +16,15 @@ Companion to the `fertigai-agents` skill. This is the detailed shape of `config.
 ### Node
 
 ```
-{ "id": "<stable id>", "type": "<node type>", "position": { "x": 0, "y": 0 }, "data": { ... } }
+{ "id": "<stable id>", "type": "<node type>", "position": { "x": 0, "y": 0 },
+  "data": { "type": "<node type>", ...node-specific fields } }
 ```
 
-`data` is node-type-specific JSON whose exact schema is owned by the editor. Mirror the shape from an existing branch's config rather than inventing fields.
+The node's kind appears in TWO places and they must match: the node-level `type` AND `data.type`. The editor reads the kind from `data.type`, so a node whose `data` omits `type` will not render, and the backend rejects it. Always set `data.type` equal to the node-level `type`. The rest of `data` is node-specific (see the table); mirror the shape from an existing branch's config rather than inventing fields.
 
 ### The 8 node types
+
+Every node's `data` includes `type` (equal to the node-level type) plus the node-specific fields below.
 
 | type | purpose | key `data` fields | rules |
 |---|---|---|---|
