@@ -28,14 +28,24 @@ Every node's `data` includes `type` (equal to the node-level type) plus the node
 
 | type | purpose | key `data` fields | rules |
 |---|---|---|---|
-| `start_agent` | conversation root and config; branch-level functions and knowledge bases attach here | `conversationGoal`, `label?` | exactly one; cannot be deleted; a routing node, so its outgoing edges must be conditioned (no `unconditional`) |
+| `start_agent` | conversation root; its `config.system_prompt` is the base prompt for the whole workflow; branch-level functions and knowledge bases attach here | `conversationGoal` (the overall goal), `label?` | exactly one; cannot be deleted; a routing node, so its outgoing edges must be conditioned (no `unconditional`) |
 | `first_message` | speaks the welcome message | `label?` | exactly one; cannot be deleted; has NO incoming edge; exactly one outgoing edge to `start_agent`, `unconditional` |
-| `subagent` | a nested agent step with its own goal and optional overrides | `conversationGoal`, `overridePrompt`, `overrideFunctions?`, `overrideKnowledgeBases?`, `voiceId`, `model`, `eagerness`, `spellingPatience` | routing node; outgoing edges must be conditioned |
+| `subagent` | a nested agent step with its own goal; inherits the base system prompt unless overridden | `conversationGoal` (this step's goal), `overridePrompt` (default `false`: replace the base system prompt only when `true`), `overrideFunctions?`, `overrideKnowledgeBases?`, `voiceId`, `model`, `eagerness`, `spellingPatience` | routing node; outgoing edges must be conditioned |
 | `say` | speaks a line, fixed or LLM-generated | `mode` (`"literal"`\|`"prompt"`), `text` (for literal), `prompt` (for prompt), `voiceId?` | at most one `unconditional` outgoing edge |
 | `function` | runs one attached function | `label?` (the function attachment is bound to the node, not in `data`) | requires exactly one attached function, supplied via the `attachments` section of the same `fertigai_agent_branch_configure` call (see fertigai-attachments); can branch on a `result` edge (success/failure) |
 | `update_context` | sets dynamic variables | `updates: [{ variableName, value }]` | every `variableName` must be a declared dynamic variable |
 | `end_call` | ends the call | `label?` | terminal: no outgoing edges |
 | `transfer` | phone transfer | `routes: [{ number, condition, transferType, timeoutSecs }]` where `transferType` is `"COLD"` or `"ATTENDED"` | terminal when all routes are `COLD`; an `ATTENDED` route returns control, so outgoing edges are then allowed but must be `unconditional`; at least one route needs a non-empty `number` |
+
+### System prompt and goals
+
+Keep these three separate, they are easy to confuse:
+
+- **Base system prompt = `config.system_prompt`.** This is the Start Agent's system prompt, and it is the BASE system prompt for the ENTIRE workflow. Every node, including every `subagent`, inherits it. Put the agent's shared persona, rules, and context here once, not repeated per node.
+- **Conversation goal = `conversationGoal`.** The Start Agent and each `subagent` each have a `conversationGoal`: the Start Agent's is the overall goal, and each subagent's is that step's goal. A goal steers the agent toward an outcome on top of the base system prompt. It is a goal, NOT a system prompt, so do not paste the whole persona into it.
+- **Subagent prompt override = `overridePrompt` (default `false`).** A subagent uses the base system prompt by default. Set `overridePrompt: true` ONLY when that one subagent should replace the base system prompt with its own instead of inheriting it. Leave it `false` unless you specifically need to overwrite the base for that step.
+
+In short: write shared instructions once in `config.system_prompt`, give the Start Agent and every subagent a `conversationGoal`, and turn on a subagent's `overridePrompt` only when that step genuinely needs a different base prompt.
 
 ### Edge
 
