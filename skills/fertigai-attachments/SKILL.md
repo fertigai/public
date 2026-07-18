@@ -17,12 +17,15 @@ An agent branch calls tools and reads knowledge during a conversation through **
 | `fertigai_knowledge_base_list` | `parent_id?`, `search?`, `cursor?`, `page_size?` | browse knowledge-base items to find their `kbi_...` ids |
 
 ## The read-modify-write loop
-The `attachments` object is declarative and replaces its whole domain: whatever you send for `functions` becomes the entire function-attachment state, and whatever you send for `knowledge_bases` becomes the entire knowledge-base state. There is no partial merge. Always:
-1. `fertigai_agent_attachments_get { agent_id, branch_id }` to read the current attachment state.
-2. Edit the returned object (add, remove, or change entries).
-3. Send the whole object back as `attachments` in `fertigai_agent_branch_configure`. Anything you leave out is removed.
+The `attachments` object is declarative and replaces its whole domain: whatever you send for `functions` becomes the entire function-attachment state, and whatever you send for `knowledge_bases` becomes the entire knowledge-base state. There is no partial merge, so anything you leave out is removed.
 
-`config` and `attachments` are independent, optional sections of the same `fertigai_agent_branch_configure` call. Send only the section(s) you're changing, together or alone.
+To edit a branch, ALWAYS read both its config and its attachments first, then send them back together in one call:
+1. `fertigai_agent_branch_get { agent_id, branch_id }` to read the current `config` (see fertigai-agents).
+2. `fertigai_agent_attachments_get { agent_id, branch_id }` to read the current `attachments`.
+3. Edit whichever you are changing (add, remove, or change entries).
+4. Send both back in one call: `fertigai_agent_branch_configure { agent_id, branch_id, config, attachments }`.
+
+Reading and re-sending both is the safe default. Because each section is a full replace, sending an `attachments` section you did not read first silently detaches everything you left out (and sending a `config` you did not read drops variables and workflow edits). The two sections are technically independent, so you may send just one when you are certain the other is untouched, but when in doubt read and send both.
 
 ## The attachments shape
 ```json

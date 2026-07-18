@@ -52,12 +52,15 @@ Nested groups are optional; omit one to keep backend defaults. The exact sub-fie
 `dynamic_variables` is an array of `{ name, default_value?, source? }`. `name` must match `^[a-zA-Z_][a-zA-Z0-9_]*$`. Reference a variable anywhere in config strings, prompts, and welcome messages with `{{ name }}`. Workflow expression edges and Update Context nodes may only reference a **declared** variable, or the save is rejected. Function outputs can also be written back into a variable.
 
 ## The reliable edit pattern (important)
-The `config` section of `fertigai_agent_branch_configure` REPLACES the whole config and runs strict validation, especially on the workflow graph (see `workflow-reference.md` for all rules: exactly one Start Agent and one First Message node, the fixed First Message to Start Agent edge, no dangling or self edges, all nodes reachable, terminal nodes with no outgoing edges, function nodes with exactly one attached function, and every referenced variable declared). Hand-building a config or workflow from scratch will almost certainly fail validation. Always:
-1. `fertigai_agents_get { id }` (or `fertigai_agent_branch_get`) to read the current `config` and `active_branch_id`.
-2. Modify only the fields you need in that object.
-3. Send the whole object back as `config` via `fertigai_agent_branch_configure`.
+Both the `config` section and each `attachments` section of `fertigai_agent_branch_configure` REPLACE their whole domain and run strict validation (the config especially on the workflow graph: exactly one Start Agent and one First Message node, the fixed First Message to Start Agent edge, no dangling or self edges, all nodes reachable, terminal nodes with no outgoing edges, function nodes with exactly one attached function, and every referenced variable declared, see `workflow-reference.md`). Because each section is a full replace, a section you send without reading it first is overwritten with only what you put in it, so hand-building config or attachments from scratch will wipe existing state and almost certainly fail validation.
 
-If the workflow includes a `function` node, that same call must also carry a matching entry in `attachments` (see fertigai-attachments), or the call is rejected.
+To edit a branch, ALWAYS read both its config and its attachments first, then send them back together:
+1. `fertigai_agents_get { id }` (or `fertigai_agent_branch_get { agent_id, branch_id }`) to read the current `config` and `active_branch_id`.
+2. `fertigai_agent_attachments_get { agent_id, branch_id }` to read the current `attachments` (functions and knowledge bases, see fertigai-attachments).
+3. Modify only what you need in each object.
+4. Send both back in one call: `fertigai_agent_branch_configure { agent_id, branch_id, config, attachments }`.
+
+Reading and re-sending both is the safe default: it stops a config edit from silently dropping the branch's attachments (and an attachments edit from dropping config), and it is required whenever the workflow has a `function` node, since that node needs its attachment in the same call or the call is rejected. The two sections are technically independent, so you may send just one when you are certain the other is untouched, but when in doubt read and send both.
 
 ## Branches
 - Agent create seeds one active branch named "Main".
@@ -66,16 +69,21 @@ If the workflow includes a `function` node, that same call must also carry a mat
 - Editing config never changes the agent's name (use `fertigai_agents_rename`).
 
 ## Example: create then configure
+Create the agent (this seeds an active branch named "Main"):
 ```
 fertigai_agents_create { "name": "Support Bot" }
 ```
-Read the new agent's active branch and starting config:
+Read the branch's current config (which carries `active_branch_id`) and its current attachments:
 ```
 fertigai_agents_get { "id": "agt_..." }
+fertigai_agent_attachments_get { "agent_id": "agt_...", "branch_id": "<active_branch_id>" }
 ```
-Edit the returned `config` (set `model`, `voice_id`, `languages`, `system_prompt`, tweak `workflow` nodes, and so on) and send it back:
+Edit the returned `config` (set `model`, `voice_id`, `languages`, `system_prompt`, tweak `workflow` nodes, and so on) and the returned `attachments` (attach functions or knowledge bases, see fertigai-attachments), then send both back in one call:
 ```
-fertigai_agent_branch_configure { "agent_id": "agt_...", "branch_id": "<active_branch_id>", "config": <edited config> }
+fertigai_agent_branch_configure {
+  "agent_id": "agt_...", "branch_id": "<active_branch_id>",
+  "config": <edited config>, "attachments": <edited attachments>
+}
 ```
 
 ## Common mistakes
