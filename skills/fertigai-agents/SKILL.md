@@ -6,9 +6,9 @@ description: Use when creating, configuring, renaming, or deleting fertig.ai age
 # Managing agents (fertigai_agents_*, fertigai_agent_branch_*)
 
 ## Overview
-An **agent** is a container: a name, status, and display colors, with none of its behavior. All behavior lives on a **branch**: the model, voice, languages, system prompt, welcome message, the conversation **workflow** (a node/edge graph), and setting groups (speech, call, post-call analysis, security, guardrails, GDPR). Every agent has exactly one active branch (the first is named "Main"); extra branches let you version or A/B a configuration. So "configure an agent" always means "update a branch's config".
+An **agent** is a container: a name, status, and display colors, with none of its behavior. All behavior lives on a **branch**: the model, voice, languages, system prompt, welcome message, the conversation **workflow** (a node/edge graph), setting groups (speech, call, post-call analysis, security, guardrails, GDPR), and its function and knowledge-base attachments. Every agent has exactly one active branch (the first is named "Main"); extra branches let you version or A/B a configuration. So "configure an agent" always means "configure a branch".
 
-Shared conventions (ids, pagination, errors, permissions) are in the fertigai-mcp skill. The full workflow node and edge model, and the exhaustive setting-group fields, are in `workflow-reference.md` next to this skill.
+Shared conventions (ids, pagination, errors, permissions) are in the fertigai-mcp skill. The full workflow node and edge model, and the exhaustive setting-group fields, are in `workflow-reference.md` next to this skill. Attaching functions, system tools, and knowledge-base items to a branch or a workflow node is in the **fertigai-attachments** skill.
 
 ## Tools
 | Tool | Args | Notes |
@@ -20,13 +20,13 @@ Shared conventions (ids, pagination, errors, permissions) are in the fertigai-mc
 | `fertigai_agents_delete` | `id` | deletes the agent |
 | `fertigai_agent_branch_get` | `agent_id`, `branch_id` | one branch, including its config |
 | `fertigai_agent_branch_create` | `agent_id`, `name`, `from_branch_id` | fork a branch from an existing one |
-| `fertigai_agent_branch_update_config` | `agent_id`, `branch_id`, `config` | the main "configure the agent" tool |
+| `fertigai_agent_branch_configure` | `agent_id`, `branch_id`, `config?`, `attachments?` | the main "configure the agent" tool: sets a branch's config and/or its function and knowledge-base attachments in one call. Each section is optional; send only what you're changing |
 | `fertigai_agent_set_active_branch` | `agent_id`, `branch_id` | make a branch the live one |
 
-There is no "list branches" tool (branches are embedded in `fertigai_agents_get`) and no `fertigai_agents_update` (config only changes through `fertigai_agent_branch_update_config`).
+There is no "list branches" tool (branches are embedded in `fertigai_agents_get`) and no `fertigai_agents_update` (config only changes through `fertigai_agent_branch_configure`). The `attachments` section of that same tool is documented in the fertigai-attachments skill.
 
 ## The config object (AgentConfig)
-The `config` passed to `fertigai_agent_branch_update_config` (and optionally to `fertigai_agents_create`) is an **AgentConfig**. `config.name` is the BRANCH name (use `"Main"` for the first branch), not the agent's name.
+The `config` section of `fertigai_agent_branch_configure` (and optionally `fertigai_agents_create`) is an **AgentConfig**. `config.name` is the BRANCH name (use `"Main"` for the first branch), not the agent's name.
 
 | Field | Type | Notes |
 |---|---|---|
@@ -52,10 +52,12 @@ Nested groups are optional; omit one to keep backend defaults. The exact sub-fie
 `dynamic_variables` is an array of `{ name, default_value?, source? }`. `name` must match `^[a-zA-Z_][a-zA-Z0-9_]*$`. Reference a variable anywhere in config strings, prompts, and welcome messages with `{{ name }}`. Workflow expression edges and Update Context nodes may only reference a **declared** variable, or the save is rejected. Function outputs can also be written back into a variable.
 
 ## The reliable edit pattern (important)
-`fertigai_agent_branch_update_config` REPLACES the whole config and runs strict validation, especially on the workflow graph (see `workflow-reference.md` for all rules: exactly one Start Agent and one First Message node, the fixed First Message to Start Agent edge, no dangling or self edges, all nodes reachable, terminal nodes with no outgoing edges, function nodes with exactly one attached function, and every referenced variable declared). Hand-building a config or workflow from scratch will almost certainly fail validation. Always:
+The `config` section of `fertigai_agent_branch_configure` REPLACES the whole config and runs strict validation, especially on the workflow graph (see `workflow-reference.md` for all rules: exactly one Start Agent and one First Message node, the fixed First Message to Start Agent edge, no dangling or self edges, all nodes reachable, terminal nodes with no outgoing edges, function nodes with exactly one attached function, and every referenced variable declared). Hand-building a config or workflow from scratch will almost certainly fail validation. Always:
 1. `fertigai_agents_get { id }` (or `fertigai_agent_branch_get`) to read the current `config` and `active_branch_id`.
 2. Modify only the fields you need in that object.
-3. Send the whole object back via `fertigai_agent_branch_update_config`.
+3. Send the whole object back as `config` via `fertigai_agent_branch_configure`.
+
+If the workflow includes a `function` node, that same call must also carry a matching entry in `attachments` (see fertigai-attachments), or the call is rejected.
 
 ## Branches
 - Agent create seeds one active branch named "Main".
@@ -73,14 +75,15 @@ fertigai_agents_get { "id": "agt_..." }
 ```
 Edit the returned `config` (set `model`, `voice_id`, `languages`, `system_prompt`, tweak `workflow` nodes, and so on) and send it back:
 ```
-fertigai_agent_branch_update_config { "agent_id": "agt_...", "branch_id": "<active_branch_id>", "config": <edited config> }
+fertigai_agent_branch_configure { "agent_id": "agt_...", "branch_id": "<active_branch_id>", "config": <edited config> }
 ```
 
 ## Common mistakes
-- Trying to change config via `fertigai_agents_rename` or a nonexistent `fertigai_agents_update`: config only changes through `fertigai_agent_branch_update_config`.
+- Trying to change config via `fertigai_agents_rename` or a nonexistent `fertigai_agents_update`: config only changes through `fertigai_agent_branch_configure`.
 - Building a `config` or `workflow` from scratch and hitting a `422` validation error: start from `get` and edit; the workflow has many structural rules (see `workflow-reference.md`).
 - Referencing an undeclared variable in an expression edge or Update Context node: declare it in `dynamic_variables` first.
+- Adding a `function` node to the workflow without also sending its attachment in the same `fertigai_agent_branch_configure` call: the call is rejected (see fertigai-attachments).
 - Confusing `agent_id` and `branch_id`: both are separate arguments on the branch tools.
 - A `403` even though the key has Agents-Edit: the workspace also needs the agents product enabled for these tools.
 
-Writes need Agents-Edit and the agents product.
+Writes to `config` need Agents-Edit and the agents product; writes to `attachments` need Integrations-Manage (see fertigai-attachments).
