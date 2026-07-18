@@ -77,6 +77,9 @@ Each assignment extracts a value from the function's JSON result using a dot-not
 
 `fertigai_agent_branch_configure` auto-creates the output dynamic variable for every `dynamic_variable` name referenced in an assignment. Do not also declare these yourself in `config.dynamic_variables`.
 
+- Each `dynamic_variable` must be non-empty, unique within that attachment's assignments, and must not start with `system__`; `value_path` must be non-empty. Otherwise the call is rejected.
+- `assignments` apply only to user-defined functions. A system tool (`system_tool_type`) ignores them, so do not put assignments on `end_call`, `language_detection`, or `transfer_to_number`.
+
 ## transfer_routes: transfer_to_number only
 ```json
 { "number": "+15551234567", "condition": "customer asks for a human", "transfer_type": "BLIND", "timeout_secs": 30 }

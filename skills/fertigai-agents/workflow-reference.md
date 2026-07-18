@@ -7,11 +7,11 @@ Companion to the `fertigai-agents` skill. This is the detailed shape of `config.
 `config.workflow` is a directed graph:
 
 ```
-"workflow": { "enabled": true, "version": 2, "nodes": [ ... ], "edges": [ ... ] }
+"workflow": { "enabled": true, "version": 3, "nodes": [ ... ], "edges": [ ... ] }
 ```
 
 - `enabled`: when `false`, the agent runs a flat single-prompt conversation and the graph is ignored.
-- `version`: currently `2`. Older graphs are migrated up automatically on save.
+- `version`: currently `3`. Older graphs are migrated up automatically on read and save, so a config you read back is already at the current version.
 
 ### Node
 
@@ -20,7 +20,7 @@ Companion to the `fertigai-agents` skill. This is the detailed shape of `config.
   "data": { "type": "<node type>", ...node-specific fields } }
 ```
 
-The node's kind appears in TWO places and they must match: the node-level `type` AND `data.type`. The editor reads the kind from `data.type`, so a node whose `data` omits `type` will not render, and the backend rejects it. Always set `data.type` equal to the node-level `type`. The rest of `data` is node-specific (see the table); mirror the shape from an existing branch's config rather than inventing fields.
+The node's kind appears in TWO places: the node-level `type` AND `data.type`. The editor reads the kind from `data.type`. The backend automatically mirrors `data.type` from the node-level `type` on every read and save, so a node that omits or mismatches `data.type` is repaired rather than rejected, but always set `data.type` equal to the node-level `type` so the editor renders it correctly. The rest of `data` is node-specific (see the table); mirror the shape from an existing branch's config rather than inventing fields.
 
 ### The 8 node types
 
@@ -79,13 +79,14 @@ Seconds. `max_duration` auto-hangs up; `silence_timeout` re-prompts after silenc
 
 ### post_call_analysis
 ```
-{ "classification": { "enabled": true, "categories": [ { "key", "name", "options": [], "description" } ] },
-  "extracted_variables": { "enabled": true, "variables": [ { "key", "name", "type", "description" } ] },
+{ "classification": { "enabled": true, "categories": [ { "public_id", "key", "name", "options": [], "description" } ] },
+  "extracted_variables": { "enabled": true, "variables": [ { "public_id", "key", "name", "type", "description" } ] },
   "summary": { "enabled": true, "prompt_enabled": false, "prompt": "" },
   "actions_enabled": true }
 ```
 - `extracted_variables[].type`: `ANY` | `STRING` | `NUMBER` | `BOOLEAN` | `ENUM`.
 - `actions_enabled` triggers configured post-call actions after the call.
+- Each category and variable carries a `public_id`. Echo it back UNCHANGED on edit: the save reconciles by `public_id`, so a category or variable whose `public_id` is missing from the payload is deleted (and its stored classification history is dropped). Leave `public_id` empty only for a genuinely new category or variable.
 
 ### security
 ```
@@ -97,12 +98,12 @@ Max inbound calls per minute before rejecting.
 ```
 { "focus": true, "manipulation": true,
   "content": true,
-  "content_config": { "sexual": { "enabled": true, "threshold": "medium" }, "violence": {...}, "harassment": {...},
+  "content_config": { "sexual": { "enabled": true, "threshold": 2 }, "violence": {...}, "harassment": {...},
                       "self_harm": {...}, "profanity": {...}, "religion_or_politics": {...}, "medical_and_legal_information": {...} },
   "custom": false, "custom_rules": [ { "enabled": true, "name": "", "prompt": "" } ] }
 ```
 - `focus` refuses off-purpose topics; `manipulation` resists social engineering.
-- `content` is the master toggle; each of the 7 `content_config` categories is `{ enabled, threshold: "low"|"medium"|"high" }`.
+- `content` is the master toggle; each of the 7 `content_config` categories is `{ enabled, threshold }` where `threshold` is an integer: `1` (low), `2` (medium), or `3` (high) (`0` means unspecified).
 
 ### gdpr
 ```
