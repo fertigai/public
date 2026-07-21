@@ -8,7 +8,7 @@ description: Use when creating, editing, or deleting fertig.ai mail templates (r
 ## Overview
 A **mail template** is a reusable HTML email with named `variables` that get filled in when the mail is sent. It has a `name`, a `variables` list, and an `html` body.
 
-Shared conventions (ids, pagination, errors, permissions) are in the fertigai-mcp skill.
+Shared conventions (ids, pagination, errors, permissions) are in the fertigai-mcp skill. Every tool here also takes an optional `workspace` slug, required only when the connection is org-wide (see fertigai-mcp / `fertigai_whoami`).
 
 ## Tools
 | Tool | Args |

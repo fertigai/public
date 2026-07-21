@@ -8,7 +8,7 @@ description: Use when creating, editing, testing, or deleting fertig.ai actions 
 ## Overview
 An **action** is an automation that runs in response to a conversation (for example a post-call step). It has a name, a description, a `style`, a parameter schema, and either a `script_source` (code) or a `pipeline` (structured steps).
 
-Code actions are an ES module with a `run(ctx)` export. The full built-in primitive set (`mail`, `llm`, `http`, `secrets`, `functions.invoke`, `tickets`, ...), the runtime (sandboxed JavaScript, ECMAScript 2020), and the sandbox limits are documented in the **fertigai-scripting** skill. Shared MCP conventions (ids, pagination, errors, permissions) are in the fertigai-mcp skill.
+Code actions are an ES module with a `run(ctx)` export. The full built-in primitive set (`mail`, `llm`, `http`, `secrets`, `functions.invoke`, `tickets`, ...), the runtime (sandboxed JavaScript, ECMAScript 2020), and the sandbox limits are documented in the **fertigai-scripting** skill. Shared MCP conventions (ids, pagination, errors, permissions) are in the fertigai-mcp skill. Every tool here also takes an optional `workspace` slug, required only when the connection is org-wide (see fertigai-mcp / `fertigai_whoami`).
 
 ## Tools
 | Tool | Args |
