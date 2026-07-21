@@ -8,7 +8,7 @@ description: Use when creating, editing, testing, or deleting fertig.ai workspac
 ## Overview
 A **function** is a reusable custom tool (JavaScript) that an agent can call during a conversation. It has a name, a description (what the model sees), a parameter JSON Schema, and a `script`. Functions can optionally require a connection for external credentials.
 
-The script is an ES module with a `run(ctx)` export, and the full built-in primitive set (`mail`, `llm`, `http`, `secrets`, `functions.invoke`, `tickets`, ...), the runtime (sandboxed JavaScript, ECMAScript 2020), and the sandbox limits are documented in the **fertigai-scripting** skill. Shared MCP conventions (ids, pagination, errors, permissions) are in the fertigai-mcp skill.
+The script is an ES module with a `run(ctx)` export, and the full built-in primitive set (`mail`, `llm`, `http`, `secrets`, `functions.invoke`, `tickets`, ...), the runtime (sandboxed JavaScript, ECMAScript 2020), and the sandbox limits are documented in the **fertigai-scripting** skill. Shared MCP conventions (ids, pagination, errors, permissions) are in the fertigai-mcp skill. Every tool here also takes an optional `workspace` slug, required only when the connection is org-wide (see fertigai-mcp / `fertigai_whoami`).
 
 ## Tools
 | Tool | Args |

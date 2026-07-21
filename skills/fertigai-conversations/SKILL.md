@@ -8,7 +8,7 @@ description: Use when reading or searching a fertig.ai workspace's conversation 
 ## Overview
 Conversations are **read-only** here: you can list or search them and fetch one in detail (transcript, outcome, extracted data). You cannot create or edit conversations through this API; agents produce them at runtime.
 
-Shared conventions (ids, pagination, errors, permissions) are in the fertigai-mcp skill.
+Shared conventions (ids, pagination, errors, permissions) are in the fertigai-mcp skill. Every tool here also takes an optional `workspace` slug, required only when the connection is org-wide (see fertigai-mcp / `fertigai_whoami`).
 
 ## Tools
 | Tool | Args |

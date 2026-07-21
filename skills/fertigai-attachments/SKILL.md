@@ -6,7 +6,7 @@ description: Use when attaching functions, built-in system tools, or knowledge-b
 # Managing branch attachments (fertigai_agent_attachments_get, fertigai_agent_branch_configure)
 
 ## Overview
-An agent branch calls tools and reads knowledge during a conversation through **attachments**: a function (user-defined or a built-in system tool) or a knowledge-base item, bound either to the whole branch or to one workflow node. Attachments are read and written declaratively, alongside the branch's config, through `fertigai_agent_branch_configure`. Shared MCP conventions (ids, pagination, errors, permissions) are in the fertigai-mcp skill; branch config itself is in the fertigai-agents skill.
+An agent branch calls tools and reads knowledge during a conversation through **attachments**: a function (user-defined or a built-in system tool) or a knowledge-base item, bound either to the whole branch or to one workflow node. Attachments are read and written declaratively, alongside the branch's config, through `fertigai_agent_branch_configure`. Shared MCP conventions (ids, pagination, errors, permissions) are in the fertigai-mcp skill; branch config itself is in the fertigai-agents skill. Every tool here also takes an optional `workspace` slug, required only when the connection is org-wide (see fertigai-mcp / `fertigai_whoami`).
 
 ## Tools
 | Tool | Args | Notes |

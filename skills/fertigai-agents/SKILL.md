@@ -8,7 +8,7 @@ description: Use when creating, configuring, renaming, or deleting fertig.ai age
 ## Overview
 An **agent** is a container: a name, status, and display colors, with none of its behavior. All behavior lives on a **branch**: the model, voice, languages, system prompt, welcome message, the conversation **workflow** (a node/edge graph), setting groups (speech, call, post-call analysis, security, guardrails, GDPR), and its function and knowledge-base attachments. Every agent has exactly one active branch (the first is named "Main"); extra branches let you version or A/B a configuration. So "configure an agent" always means "configure a branch".
 
-Shared conventions (ids, pagination, errors, permissions) are in the fertigai-mcp skill. The full workflow node and edge model, and the exhaustive setting-group fields, are in `workflow-reference.md` next to this skill. Attaching functions, system tools, and knowledge-base items to a branch or a workflow node is in the **fertigai-attachments** skill.
+Shared conventions (ids, pagination, errors, permissions) are in the fertigai-mcp skill. Every tool here also takes an optional `workspace` slug, required only when the connection is org-wide (see fertigai-mcp / `fertigai_whoami`). The full workflow node and edge model, and the exhaustive setting-group fields, are in `workflow-reference.md` next to this skill. Attaching functions, system tools, and knowledge-base items to a branch or a workflow node is in the **fertigai-attachments** skill.
 
 ## Tools
 | Tool | Args | Notes |
