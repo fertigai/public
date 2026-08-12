@@ -22,8 +22,10 @@ Shared conventions (ids, pagination, errors, permissions) are in the fertigai-mc
 
 ## Fields
 - `key`: a stable identifier for the template, set on create and not changeable on update.
-- `fields`: an array of `{ key, label, type, required }` objects (the server assigns each field's `id`). `type` is a field-type string such as `text`, `number`, or `select`; `get` an existing template to see the exact set your workspace uses.
-- `statuses`: an array of `{ label, category, color }` objects (the server assigns each status's `id`). `default_status_id` names the starting status. Because status ids are server-assigned on create, omit `default_status_id` on the first create, then `get` the template to read the generated status ids and set it with `update`.
+- `fields`: an array of `{ id?, key, label, type, required?, help_text?, placeholder?, default?, config? }`. `type` is one of `SHORT_TEXT`, `LONG_TEXT`, `NUMBER`, `DATE`, `DATE_TIME`, `DROPDOWN`, `MULTI_SELECT`, `CHECKBOX`, `EMAIL`, `PHONE` (case-insensitive). `DROPDOWN` and `MULTI_SELECT` require at least one option in `config.options` (`[{ value, label }]`). Keys and ids must be unique within the template.
+- `statuses`: an array of `{ id?, label, category, color? }`. `category` is one of `NEW`, `OPEN`, `PENDING`, `SOLVED`, `CLOSED` (case-insensitive; responses return it uppercase).
+- **Ids**: omit `id` (or send `""`) on a new field or status and the server generates one; a non-empty `id` you send is kept as-is. On `update`, always reuse the ids returned by `get` so existing tickets keep pointing at the same fields and statuses.
+- `default_status_id` names the status new tickets start in and must match an `id` in `statuses`. To set it on create, give that status your own `id` and reference it; otherwise omit it, `get` the generated ids, and set it with `update`.
 - There is no delete: use `fertigai_ticket_templates_archive` (and `unarchive` to restore). `list` hides archived templates unless you pass `include_archived: true`.
 
 ## Editing pattern
@@ -31,6 +33,9 @@ Get the template, edit the returned `fields` and `statuses` arrays, and send the
 
 ## Common mistakes
 - Expecting a delete tool: archive instead.
+- A `DROPDOWN` or `MULTI_SELECT` field without `config.options`: rejected.
+- `default_status_id` not matching any status `id` in the same payload: rejected.
+- Sending fresh ids on `update` instead of the ones `get` returned: existing tickets lose their link to those fields/statuses.
 - Forgetting `include_archived: true` when looking for an archived template.
 - Missing the ticketing product: ticket templates need Tickets-Manage AND the ticketing product; without the product every call returns a not-licensed error.
 

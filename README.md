@@ -10,6 +10,7 @@ Each folder under `skills/` is one [Agent Skill](https://agentskills.io) (a `SKI
 |---|---|
 | `fertigai-mcp` | Index and shared conventions: endpoint, auth, ids, pagination, permissions, errors |
 | `fertigai-agents` | Creating and configuring agents, branches, the conversation workflow, and setting groups |
+| `fertigai-attachments` | Attaching functions, system tools, and knowledge bases to a branch or workflow node |
 | `fertigai-functions` | Custom JavaScript function tools that agents can call during a conversation |
 | `fertigai-actions` | Automations that run in response to a conversation (for example post-call steps) |
 | `fertigai-scripting` | The shared JavaScript environment for functions and actions: `run(ctx)`, built-in primitives, limits |
@@ -35,4 +36,4 @@ Authenticate with a workspace API key (`wsk_...`, created in workspace settings 
 1. Add the workspace MCP endpoint (URL + `wsk_` key) to your MCP client.
 2. Make these skills available to the assistant (for example, copy the folders into your assistant's skills directory).
 
-The `fertigai-mcp` index skill is the entry point; the assistant loads a domain skill when a task calls for it.
+The `fertigai-mcp` index skill is the entry point; the assistant loads a domain skill when a task calls for it. Installing only `fertigai-mcp` also works when the assistant can fetch URLs: it links every other skill's latest version in this repository.

@@ -17,7 +17,7 @@ An agent branch calls tools and reads knowledge during a conversation through **
 | `fertigai_knowledge_base_list` | `parent_id?`, `search?`, `cursor?`, `page_size?` | browse knowledge-base items to find their `kbi_...` ids |
 
 ## The read-modify-write loop
-The `attachments` object is declarative and replaces its whole domain: whatever you send for `functions` becomes the entire function-attachment state, and whatever you send for `knowledge_bases` becomes the entire knowledge-base state. There is no partial merge, so anything you leave out is removed.
+The `attachments` object is declarative and replaces its whole domain: whatever you send for `functions` becomes the entire function-attachment state, and whatever you send for `knowledge_bases` becomes the entire knowledge-base state. There is no partial merge, so anything you leave out is removed - and that includes a whole missing sub-section: an `attachments` object that carries only `knowledge_bases` detaches EVERY function (and vice versa). Always send both sub-sections.
 
 To edit a branch, ALWAYS read both its config and its attachments first, then send them back together in one call:
 1. `fertigai_agent_branch_get { agent_id, branch_id }` to read the current `config` (see fertigai-agents).
@@ -51,7 +51,7 @@ Reading and re-sending both is the safe default. Because each section is a full 
 | `parameter_values` | object | keyed by the function's parameter key, see below. Empty for system tools other than `transfer_to_number` |
 | `connection_public_id` | string | required only when the underlying function needs a connection |
 | `assignments` | array | response-to-variable assignments, see below |
-| `transfer_routes` | array | only for the `transfer_to_number` system tool, see below |
+| `transfer_type`, `number_source`, `transfer_dynamic_variable`, `transfer_timeout_secs`, `transfer_routes` | | only for the `transfer_to_number` system tool, see below |
 
 ## parameter_values: the four sources
 Each key in `parameter_values` maps to a tagged object with exactly one source:
@@ -64,10 +64,10 @@ Each key in `parameter_values` maps to a tagged object with exactly one source:
   "tier":  { "source": { "DynamicVariable":  { "name": "customer_tier" } } }
 }
 ```
-- `Llm`: the model decides the value at call time. `description_override` optionally replaces the parameter's schema description shown to the model.
-- `Static`: a literal value sent on every call. `value` must match the parameter's declared type (string, number, boolean, or a nested object/array).
-- `Secret`: resolved from a workspace secret (`sec_...`) at call time; the plaintext value never appears in the config.
-- `DynamicVariable`: resolved from a branch dynamic variable's current value at call time. `name` must be a variable already declared in `config.dynamic_variables`.
+- `Llm`: the model decides the value at call time. `description_override` is REQUIRED (non-empty): it is the description the model reads when choosing the value.
+- `Static`: a literal value sent on every call. `value` must match the parameter's declared type (string, number, boolean, or a nested object/array); a required string parameter needs a non-empty value.
+- `Secret`: resolved from a workspace secret (`sec_...`) at call time; the plaintext value never appears in the config. Required parameters need a non-empty `secret_public_id`.
+- `DynamicVariable`: resolved from a branch dynamic variable's current value at call time. `name` should be a variable declared in `config.dynamic_variables` (an undeclared name is not rejected, but the attachment is flagged stale and the value resolves empty).
 
 ## assignments: writing a result into a variable
 ```json
@@ -75,16 +75,25 @@ Each key in `parameter_values` maps to a tagged object with exactly one source:
 ```
 Each assignment extracts a value from the function's JSON result using a dot-notation `value_path` (for example `"data.0.id"`) and writes it into the named dynamic variable, so later nodes and prompts can reference it as `{{ order_id }}`. `sanitize: true` keeps the extracted value out of what the model and the caller see in the transcript while still assigning it; `preserve_native_type` keeps the original JSON type instead of turning it into a string.
 
-`fertigai_agent_branch_configure` auto-creates the output dynamic variable for every `dynamic_variable` name referenced in an assignment. Do not also declare these yourself in `config.dynamic_variables`.
+`fertigai_agent_branch_configure` auto-creates the output dynamic variable for every `dynamic_variable` name referenced in an assignment; you do not need to declare these in `config.dynamic_variables` (doing so anyway is harmless).
 
 - Each `dynamic_variable` must be non-empty, unique within that attachment's assignments, and must not start with `system__`; `value_path` must be non-empty. Otherwise the call is rejected.
 - `assignments` apply only to user-defined functions. A system tool (`system_tool_type`) ignores them, so do not put assignments on `end_call`, `language_detection`, or `transfer_to_number`.
 
-## transfer_routes: transfer_to_number only
+## Transfer settings: transfer_to_number only
+A `transfer_to_number` entry carries its transfer settings at the attachment level:
 ```json
-{ "number": "+15551234567", "condition": "customer asks for a human", "transfer_type": "ATTENDED", "timeout_secs": 15 }
+{ "system_tool_type": "transfer_to_number",
+  "transfer_type": "COLD",
+  "number_source": "LLM",
+  "transfer_routes": [ { "number": "+15551234567", "condition": "customer asks for a human" } ] }
 ```
-`transfer_type` is `"COLD"` (unattended, connects directly) or `"ATTENDED"` (rings the destination first before connecting); these are the only two accepted values. `timeout_secs` is the maximum ring time for an `ATTENDED` transfer before the call returns to the agent; it defaults to `15` seconds when omitted (`0` is a literal zero, it does not select a default, so use `15` for the standard behavior). This field only applies to a `transfer_to_number` system-tool entry; other attachments leave it empty.
+- `transfer_type`: `"COLD"` (connects directly) or `"ATTENDED"` (rings the destination first; the call returns to the agent if unanswered). Empty means `COLD`.
+- `number_source`: `"LLM"` (the model picks a route; at least one route needs a non-empty `number`) or `"DYNAMIC_VARIABLE"` (the number comes from a variable; `transfer_dynamic_variable` is then REQUIRED and no routes are needed). Empty means `LLM`.
+- `transfer_timeout_secs`: maximum `ATTENDED` ring time before the call returns to the agent; omitted reads as `30`.
+- Per-route `transfer_type`/`timeout_secs` are deprecated; use the attachment-level fields.
+
+These fields only apply to a `transfer_to_number` system-tool entry; other attachments leave them empty.
 
 ## Function nodes need a matching attachment
 A workflow `function` node runs exactly one attached function. If a branch's `config.workflow` has a `function` node, the same `fertigai_agent_branch_configure` call MUST include a matching entry under `attachments.functions.nodes["<that node's id>"]`, or the whole call is rejected. Set the workflow and its function-node attachments together in one call.
@@ -116,10 +125,10 @@ fertigai_agent_branch_configure {
 ```
 
 ## Common mistakes
-- Sending a partial `attachments` object and expecting a merge: each section (`functions`, `knowledge_bases`) fully replaces its current state. Read first with `fertigai_agent_attachments_get`, edit, send everything back.
+- Sending a partial `attachments` object and expecting a merge: each section (`functions`, `knowledge_bases`) fully replaces its current state, and a missing sub-section counts as empty. Read first with `fertigai_agent_attachments_get`, edit, send everything back.
+- An `Llm` parameter source without a `description_override`: rejected; the description is required.
 - Leaving a workflow `function` node without a matching node-scoped attachment in the same call: the call is rejected.
 - Setting both `function_id` and `system_tool_type` on the same entry, or setting neither.
-- Manually declaring an assignment's `dynamic_variable` in `config.dynamic_variables`: it is created automatically.
 - Omitting `connection_public_id` for a function that requires a connection.
 
 Writes need Integrations-Manage for the `attachments` section and Agents-Edit for the `config` section (both, when a call sends both).

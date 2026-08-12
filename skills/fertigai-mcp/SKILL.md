@@ -54,6 +54,10 @@ Call `fertigai_whoami` right after connecting to confirm which kind you have (it
 
 Load the per-domain skill for field details, workflows, and gotchas. Functions and actions also share a JavaScript scripting environment (the `run(ctx)` contract and built-in primitives like `mail.send` and `llm.send`); that is documented in the **fertigai-scripting** skill. `fertigai_whoami` is workspace-agnostic (no `workspace` argument, documented above); every other tool listed here is workspace-scoped (see Conventions below).
 
+If a referenced skill is not installed locally, fetch its latest version from GitHub:
+`https://raw.githubusercontent.com/fertigai/public/main/skills/<skill-name>/SKILL.md`
+(for example `.../skills/fertigai-agents/SKILL.md`; the agent workflow reference is `.../skills/fertigai-agents/workflow-reference.md`). Every skill in the table lives there, always current, so installing only this skill is enough when your client can fetch URLs.
+
 ## Conventions shared by every tool
 - **`workspace` targeting**: every tool except `fertigai_whoami` accepts an optional `workspace` argument (a workspace slug). On a per-workspace connection it's ignored, the connection is already scoped. On an org-wide connection it's REQUIRED: pass a slug from `fertigai_whoami`'s `workspaces[]`. Never guess a slug; use only a slug that `fertigai_whoami` (or a `list` tool) returned.
 - **Public IDs** are prefixed and opaque: agents `agt_`, functions `fn_`, actions `act_`, secrets `sec_`, mail templates `mtpl_`, and similar. Always pass an id that a `list` or `get` returned; never invent one.

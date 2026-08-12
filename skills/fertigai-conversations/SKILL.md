@@ -19,7 +19,7 @@ Shared conventions (ids, pagination, errors, permissions) are in the fertigai-mc
 ## Filters
 - `agent_id`: limit to one agent (its `agt_` id).
 - `status`: one of `completed`, `transferred`, `dropped`.
-- `date_from` / `date_to`: ISO timestamps.
+- `date_from` / `date_to`: an RFC 3339 timestamp or a bare `YYYY-MM-DD` (read as midnight UTC). `date_from` is inclusive, `date_to` exclusive, so a full day is `date_from: "2026-08-11", date_to: "2026-08-12"`.
 - `search`: matches the summary and the caller number.
 - `flag`: comma-separated flag colors (for example `red,orange`), optionally including `none` for unflagged.
 - Paginate with `cursor` and `page_size`. Results are newest-first.

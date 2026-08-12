@@ -31,11 +31,15 @@ Every node's `data` includes `type` (equal to the node-level type) plus the node
 | `start_agent` | conversation root; its `config.system_prompt` is the base prompt for the whole workflow; branch-level functions and knowledge bases attach here | `conversationGoal` (the overall goal), `label?` | exactly one; cannot be deleted; a routing node, so its outgoing edges must be conditioned (no `unconditional`) |
 | `first_message` | speaks the welcome message | `label?` | exactly one; cannot be deleted; has NO incoming edge; exactly one outgoing edge to `start_agent`, `unconditional` |
 | `subagent` | a nested agent step with its own goal; inherits the base system prompt unless overridden | `conversationGoal` (this step's goal), `overridePrompt` (default `false`: replace the base system prompt only when `true`), `overrideFunctions?`, `overrideKnowledgeBases?`, `voiceId`, `model`, `eagerness`, `spellingPatience` | routing node; outgoing edges must be conditioned |
-| `say` | speaks a line, fixed or LLM-generated | `mode` (`"literal"`\|`"prompt"`), `text` (for literal), `prompt` (for prompt), `voiceId?` | at most one `unconditional` outgoing edge |
+| `say` | speaks a line, fixed or LLM-generated | `mode` (`"literal"`\|`"prompt"`), `text` (for literal), `prompt` (for prompt), `voiceId?`; the selected mode's text/prompt must be non-empty | at most one `unconditional` outgoing edge |
 | `function` | runs one attached function | `label?` (the function attachment is bound to the node, not in `data`) | requires exactly one attached function, supplied via the `attachments` section of the same `fertigai_agent_branch_configure` call (see fertigai-attachments); can branch on a `result` edge (success/failure) |
-| `update_context` | sets dynamic variables | `updates: [{ variableName, value }]` | every `variableName` must be a declared dynamic variable |
+| `update_context` | sets dynamic variables | `updates: [{ variableName, value }]` (see below) | every `variableName` must be a declared dynamic variable |
 | `end_call` | ends the call | `label?` | terminal: no outgoing edges |
-| `transfer` | phone transfer | `routes: [{ number, condition, transferType, timeoutSecs }]` where `transferType` is `"COLD"` or `"ATTENDED"` | terminal when all routes are `COLD`; an `ATTENDED` route returns control, so outgoing edges are then allowed but must be `unconditional`; at least one route needs a non-empty `number` |
+| `transfer` | phone transfer | `transferType` (`"COLD"`\|`"ATTENDED"`, empty = COLD), `numberSource` (`"LLM"`\|`"DYNAMIC_VARIABLE"`, empty = LLM), `dynamicVariable`, `timeoutSecs`, `routes: [{ number, condition }]` | terminal when `transferType` is `COLD`; an `ATTENDED` transfer returns control, so outgoing edges are then allowed but must be `unconditional`. With `numberSource: "LLM"` at least one route needs a non-empty `number`; with `"DYNAMIC_VARIABLE"` no routes are needed but `dynamicVariable` must name the variable holding the number. `timeoutSecs` is the `ATTENDED` max ring time (omitted = 30) |
+
+An `update_context` entry's `value` is a tagged object: `{ "kind": "literal", "value": <literal>, "valueType": "string"|"number"|"boolean" }`, `{ "kind": "var", "name": "<declared variable>" }`, or `{ "kind": "llm", "prompt": "<instruction>", "valueType": ... }`.
+
+(Per-route `transferType`/`timeoutSecs` on transfer routes are deprecated; the node-level fields above replace them. Old graphs still carrying them read back with defaults `COLD`/`30`.)
 
 ### System prompt and goals
 
@@ -58,17 +62,18 @@ In short: write shared instructions once in `config.system_prompt`, give the Sta
 - `{ "kind": "unconditional" }` - at most one per source node; NOT allowed from `start_agent` or `subagent`.
 - `{ "kind": "llm", "condition": "<natural language>", "label?": "..." }` - an LLM decides whether to follow this edge.
 - `{ "kind": "expression", "expression": { "kind": "compare", "left": { "name": "<var>" }, "op": "eq"|"neq"|"gt"|"lt"|"gte"|"lte", "right": <literal> }, "label?": "..." }` - compares a declared variable; `left.name` must be declared.
-- `{ "kind": "result", "successful": true|false, "label?": "..." }` - only from a `function` node (or a COLD/mixed `transfer`); branches on tool success or failure.
+- `{ "kind": "result", "successful": true|false, "label?": "..." }` - only from a `function` node; branches on tool success or failure.
 
 ### Validation rules (a save is rejected if any is broken)
 
-- Exactly one `start_agent` and exactly one `first_message`.
+- An enabled workflow has at least one node; exactly one `start_agent` and exactly one `first_message`.
 - `first_message` has no incoming edge and exactly one `unconditional` outgoing edge to `start_agent`.
-- No self-loops; no edges referencing a missing node; every node reachable.
-- Terminal nodes (`end_call`; an all-`COLD` `transfer`) have no outgoing edges.
+- No self-loops; no edges referencing a missing node; every node except `first_message` has at least one incoming edge.
+- Terminal nodes (`end_call`; a `COLD` `transfer`) have no outgoing edges; an `ATTENDED` transfer's outgoing edges are `unconditional` only.
 - A `function` node has exactly one attached function, sent in the `attachments` section of the same configure call (a `function` node with no matching attachment is rejected; see fertigai-attachments).
 - `start_agent` and `subagent` outgoing edges are conditioned (no `unconditional`).
 - Every variable referenced by an expression edge or an `update_context` node is declared in `config.dynamic_variables`.
+- A transfer with `numberSource: "LLM"` has at least one route with a non-empty `number`; with `"DYNAMIC_VARIABLE"`, a non-empty `dynamicVariable`.
 
 ## Setting groups (nested in config)
 
@@ -117,5 +122,7 @@ Max inbound calls per minute before rejecting.
 
 ### gdpr
 ```
-{ "consent_required": false, "anonymize_data": false, "data_retention_days": 90, "recording_enabled": false }
+{ "consent_required": false, "anonymize_data": false, "data_retention_days": 90,
+  "recording_retention_days": null, "recording_enabled": true }
 ```
+Values shown are the defaults (an omitted `gdpr` block keeps them; a present block replaces the whole group, with absent fields falling back to these defaults). `data_retention_days` is capped at 36500. `recording_retention_days` controls how long call audio is kept: `null`/omitted follows `data_retention_days`, `0` keeps no audio, and any value is capped at `data_retention_days`.

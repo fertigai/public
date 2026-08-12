@@ -20,8 +20,8 @@ Shared conventions (ids, pagination, errors, permissions) are in the fertigai-mc
 | `fertigai_mail_templates_delete` | `id` |
 
 ## Fields
-- `variables`: an array of `{ name, description, required }` objects declaring the placeholders the `html` uses.
-- `html`: the template body (up to a size limit). It is compiled and validated on save; a broken template returns a validation error.
+- `variables`: an array of `{ name, description, required }` objects declaring the placeholders the `html` uses. Variables marked `required` are enforced at send time.
+- `html`: the template body, Jinja-style syntax (`{{ name }}` placeholders), max 256 KiB. It is compiled and validated on save; a broken template returns a validation error. Interpolated values are HTML-escaped automatically at render time.
 - The URL slug is derived from `name` by the server, so you do not set or change a slug. The slug stays fixed once created even if you rename.
 
 ## Example

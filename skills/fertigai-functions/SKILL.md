@@ -8,7 +8,7 @@ description: Use when creating, editing, testing, or deleting fertig.ai workspac
 ## Overview
 A **function** is a reusable custom tool (JavaScript) that an agent can call during a conversation. It has a name, a description (what the model sees), a parameter JSON Schema, and a `script`. Functions can optionally require a connection for external credentials.
 
-The script is an ES module with a `run(ctx)` export, and the full built-in primitive set (`mail`, `llm`, `http`, `secrets`, `functions.invoke`, `tickets`, ...), the runtime (sandboxed JavaScript, ECMAScript 2020), and the sandbox limits are documented in the **fertigai-scripting** skill. Shared MCP conventions (ids, pagination, errors, permissions) are in the fertigai-mcp skill. Every tool here also takes an optional `workspace` slug, required only when the connection is org-wide (see fertigai-mcp / `fertigai_whoami`).
+The script is an ES module with a `run(ctx)` export (TypeScript accepted), and the full built-in primitive set (`mail`, `llm`, `http`, `time`, `objects`, `secrets`, `functions.invoke`, `tickets`, ...), the runtime, and the sandbox limits are documented in the **fertigai-scripting** skill. Shared MCP conventions (ids, pagination, errors, permissions) are in the fertigai-mcp skill. Every tool here also takes an optional `workspace` slug, required only when the connection is org-wide (see fertigai-mcp / `fertigai_whoami`).
 
 ## Tools
 | Tool | Args |
@@ -31,11 +31,12 @@ The script is an ES module with a `run(ctx)` export, and the full built-in primi
 A function's `ctx` is param-centric:
 ```
 { params: { /* the typed arguments, matching parameter_schema */ },
+  event: { type: "agent-invocation" | "mailhook" | "ticket-trigger" | "manual-test" | "function-call", ... },
   connection?: { /* credentials, when requires_connection_slug is set */ },
-  conversation_id?: "con_...",   // present when an agent calls it mid-call
+  conversation_id?: "cv_...",   // present when an agent calls it mid-call
   agent_id?: "agt_..." }
 ```
-It has NO transcript or conversation history (that is the action `ctx`; see fertigai-actions). Inbound-mail-hook functions additionally receive `ctx.mail`.
+It has NO transcript or conversation history (that is the action `ctx`; see fertigai-actions). Mail-hook runs additionally receive `ctx.mail` (the inbound message) and ticket-trigger runs receive `ctx.ticket`. `ctx.event` carries the trigger detail (see fertigai-scripting).
 
 ## The return contract (strict)
 A function MUST return `{ status: <integer 100-599>, data: <any JSON> }`. `status` becomes the HTTP status the caller or agent sees; `data` becomes the raw JSON response body (no wrapping envelope). Returning any other shape fails as `502 function-invalid-return-shape`. A thrown error surfaces as `500`, a timeout as `504`.
