@@ -1,6 +1,6 @@
 # Agent workflow and setting-group reference
 
-Companion to the `fertigai-agents` skill. This is the detailed shape of `config.workflow` (the conversation graph) and the nested setting groups. The whole `config` is validated as one object on the `config` section of `fertigai_agent_branch_configure`, so the reliable way to author these is to `fertigai_agents_get` an agent, edit the returned `config`, and send it back.
+Companion to `agents.md`. This is the detailed shape of `config.workflow` (the conversation graph) and the nested setting groups. The whole `config` is validated as one object on the `config` section of `fertigai_agent_branch_configure`, so the reliable way to author these is to `fertigai_agents_get` an agent, edit the returned `config`, and send it back.
 
 ## workflow
 
@@ -32,7 +32,7 @@ Every node's `data` includes `type` (equal to the node-level type) plus the node
 | `first_message` | speaks the welcome message | `label?` | exactly one; cannot be deleted; has NO incoming edge; exactly one outgoing edge to `start_agent`, `unconditional` |
 | `subagent` | a nested agent step with its own goal; inherits the base system prompt unless overridden | `conversationGoal` (this step's goal), `overridePrompt` (default `false`: replace the base system prompt only when `true`), `overrideFunctions?`, `overrideKnowledgeBases?`, `voiceId`, `model`, `eagerness`, `spellingPatience` | routing node; outgoing edges must be conditioned |
 | `say` | speaks a line, fixed or LLM-generated | `mode` (`"literal"`\|`"prompt"`), `text` (for literal), `prompt` (for prompt), `voiceId?`; the selected mode's text/prompt must be non-empty | at most one `unconditional` outgoing edge |
-| `function` | runs one attached function | `label?` (the function attachment is bound to the node, not in `data`) | requires exactly one attached function, supplied via the `attachments` section of the same `fertigai_agent_branch_configure` call (see fertigai-attachments); can branch on a `result` edge (success/failure) |
+| `function` | runs one attached function | `label?` (the function attachment is bound to the node, not in `data`) | requires exactly one attached function, supplied via the `attachments` section of the same `fertigai_agent_branch_configure` call (see attachments.md); can branch on a `result` edge (success/failure) |
 | `update_context` | sets dynamic variables | `updates: [{ variableName, value }]` (see below) | every `variableName` must be a declared dynamic variable |
 | `end_call` | ends the call | `label?` | terminal: no outgoing edges |
 | `transfer` | phone transfer | `transferType` (`"COLD"`\|`"ATTENDED"`, empty = COLD), `numberSource` (`"LLM"`\|`"DYNAMIC_VARIABLE"`, empty = LLM), `dynamicVariable`, `timeoutSecs`, `routes: [{ number, condition }]` | terminal when `transferType` is `COLD`; an `ATTENDED` transfer returns control, so outgoing edges are then allowed but must be `unconditional`. With `numberSource: "LLM"` at least one route needs a non-empty `number`; with `"DYNAMIC_VARIABLE"` no routes are needed but `dynamicVariable` must name the variable holding the number. `timeoutSecs` is the `ATTENDED` max ring time (omitted = 30) |
@@ -70,7 +70,7 @@ In short: write shared instructions once in `config.system_prompt`, give the Sta
 - `first_message` has no incoming edge and exactly one `unconditional` outgoing edge to `start_agent`.
 - No self-loops; no edges referencing a missing node; every node except `first_message` has at least one incoming edge.
 - Terminal nodes (`end_call`; a `COLD` `transfer`) have no outgoing edges; an `ATTENDED` transfer's outgoing edges are `unconditional` only.
-- A `function` node has exactly one attached function, sent in the `attachments` section of the same configure call (a `function` node with no matching attachment is rejected; see fertigai-attachments).
+- A `function` node has exactly one attached function, sent in the `attachments` section of the same configure call (a `function` node with no matching attachment is rejected; see attachments.md).
 - `start_agent` and `subagent` outgoing edges are conditioned (no `unconditional`).
 - Every variable referenced by an expression edge or an `update_context` node is declared in `config.dynamic_variables`.
 - A transfer with `numberSource: "LLM"` has at least one route with a non-empty `number`; with `"DYNAMIC_VARIABLE"`, a non-empty `dynamicVariable`.

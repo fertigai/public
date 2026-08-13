@@ -1,14 +1,9 @@
----
-name: fertigai-actions
-description: Use when creating, editing, testing, or deleting fertig.ai actions (automations that run in response to a conversation, for example post-call steps) through the workspace MCP.
----
-
 # Managing actions (fertigai_actions_*)
 
 ## Overview
 An **action** is an automation that runs in response to a conversation (for example a post-call step). It has a name, a description, a `style`, a parameter schema, and either a `script_source` (code) or a `pipeline` (structured steps).
 
-Code actions are an ES module with a `run(ctx)` export (TypeScript accepted). The full built-in primitive set (`mail`, `llm`, `http`, `time`, `objects`, `secrets`, `functions.invoke`, `tickets`, ...), the runtime, and the sandbox limits are documented in the **fertigai-scripting** skill. Shared MCP conventions (ids, pagination, errors, permissions) are in the fertigai-mcp skill. Every tool here also takes an optional `workspace` slug, required only when the connection is org-wide (see fertigai-mcp / `fertigai_whoami`).
+Code actions are an ES module with a `run(ctx)` export (TypeScript accepted). The full built-in primitive set (`mail`, `llm`, `http`, `time`, `objects`, `secrets`, `functions.invoke`, `tickets`, ...), the runtime, and the sandbox limits are documented in the scripting reference (scripting.md). Shared MCP conventions (ids, pagination, errors, permissions) are in the skill index (SKILL.md). Every tool here also takes an optional `workspace` slug, required only when the connection is org-wide (see SKILL.md / `fertigai_whoami`).
 
 ## Tools
 | Tool | Args |
@@ -38,7 +33,7 @@ An action's `ctx` is conversation-centric, built from the conversation that trig
   event: { type: "post-call-analysis" },
   connection?: { /* credentials, when connection-backed */ } }
 ```
-Use `conversation.normalize(ctx)` (see fertigai-scripting) to render the transcript into readable lines.
+Use `conversation.normalize(ctx)` (see scripting.md) to render the transcript into readable lines.
 
 ## Return value
 Unlike a function, an action's return value is stored verbatim as the execution result; there is no required `{ status, data }` shape. Returning something small and descriptive (for example `{ ok: true, ticketId }`) is good practice.

@@ -1,6 +1,6 @@
 ---
 name: fertigai-mcp
-description: Use when managing a fertig.ai workspace through its MCP endpoint - creating or editing agents, branch attachments, functions, actions, ticket templates, mail templates, or secrets, or reading conversations - via the fertigai_* tools.
+description: Use when managing a fertig.ai workspace through its MCP endpoint - creating or editing agents, branch attachments, functions, actions (including writing their JavaScript/TypeScript scripts), ticket templates, mail templates, or secrets, or reading conversations - via the fertigai_* tools. Detailed per-domain guides are bundled under references/.
 ---
 
 # fertig.ai Workspace MCP (fertigai_*)
@@ -40,23 +40,20 @@ Two connection kinds, depending on whether you connect to one workspace or to ev
 Call `fertigai_whoami` right after connecting to confirm which kind you have (its `grant` field) and, on an org-wide connection, which workspace slugs you can target.
 
 ## Tool catalogue by domain
-| Domain | Tools (prefix `fertigai_`) | Skill |
+| Domain | Tools (prefix `fertigai_`) | Reference |
 |---|---|---|
-| Identity (start here) | whoami | this skill |
-| Agents + branches | agents_list/get/create/rename/delete, agent_branch_get/create/configure, agent_set_active_branch | fertigai-agents |
-| Branch attachments | agent_attachments_get, agent_branch_configure (shared with config), system_tools_list, knowledge_base_list | fertigai-attachments |
-| Functions | functions_list/get/create/update/delete/test | fertigai-functions |
-| Actions | actions_list/get/create/update/delete/test | fertigai-actions |
-| Ticket templates | ticket_templates_list/get/create/update/archive/unarchive | fertigai-ticket-templates |
-| Mail templates | mail_templates_list/get/create/update/delete | fertigai-mail-templates |
-| Secrets | secrets_list/create/update/delete | fertigai-secrets |
-| Conversations (read only) | conversations_list/get | fertigai-conversations |
+| Identity (start here) | whoami | this file |
+| Agents + branches | agents_list/get/create/rename/delete, agent_branch_get/create/configure, agent_set_active_branch | references/agents.md (+ agents-workflow.md) |
+| Branch attachments | agent_attachments_get, agent_branch_configure (shared with config), system_tools_list, knowledge_base_list | references/attachments.md |
+| Functions | functions_list/get/create/update/delete/test | references/functions.md |
+| Actions | actions_list/get/create/update/delete/test | references/actions.md |
+| Script environment | (used by functions and actions) | references/scripting.md |
+| Ticket templates | ticket_templates_list/get/create/update/archive/unarchive | references/ticket-templates.md |
+| Mail templates | mail_templates_list/get/create/update/delete | references/mail-templates.md |
+| Secrets | secrets_list/create/update/delete | references/secrets.md |
+| Conversations (read only) | conversations_list/get | references/conversations.md |
 
-Load the per-domain skill for field details, workflows, and gotchas. Functions and actions also share a JavaScript scripting environment (the `run(ctx)` contract and built-in primitives like `mail.send` and `llm.send`); that is documented in the **fertigai-scripting** skill. `fertigai_whoami` is workspace-agnostic (no `workspace` argument, documented above); every other tool listed here is workspace-scoped (see Conventions below).
-
-If a referenced skill is not installed locally, fetch its latest version from GitHub:
-`https:/cdn.fertig.ai/skills/<skill-name>/SKILL.md`
-(for example `.../skills/fertigai-agents/SKILL.md`; the agent workflow reference is `.../skills/fertigai-agents/workflow-reference.md`). Every skill in the table lives there, always current, so installing only this skill is enough when your client can fetch URLs.
+Before using a domain's tools, READ its reference file (path relative to this skill) for field details, workflows, and gotchas. `references/scripting.md` covers the JavaScript/TypeScript environment shared by functions and actions (the `run(ctx)` contract, built-in primitives like `mail.send` and `llm.send`, sandbox limits). `fertigai_whoami` is workspace-agnostic (no `workspace` argument, documented above); every other tool listed here is workspace-scoped (see Conventions below). If a reference file is missing locally, fetch the latest from `https://cdn.fertig.ai/skills/fertigai-mcp/references/<name>.md` (this file: `https://cdn.fertig.ai/skills/fertigai-mcp/SKILL.md`).
 
 ## Conventions shared by every tool
 - **`workspace` targeting**: every tool except `fertigai_whoami` accepts an optional `workspace` argument (a workspace slug). On a per-workspace connection it's ignored, the connection is already scoped. On an org-wide connection it's REQUIRED: pass a slug from `fertigai_whoami`'s `workspaces[]`. Never guess a slug; use only a slug that `fertigai_whoami` (or a `list` tool) returned.
@@ -69,5 +66,5 @@ If a referenced skill is not installed locally, fetch its latest version from Gi
 ## Typical flow
 1. `fertigai_whoami` once per connection, to learn your grant type and (if org-wide) which workspace slugs you can target.
 2. `list` or `get` to discover what exists and copy an id or a config object.
-3. `create` or `update` with the required fields (see the domain skill).
+3. `create` or `update` with the required fields (see the domain's reference file).
 4. For functions and actions, `test` a draft before saving.

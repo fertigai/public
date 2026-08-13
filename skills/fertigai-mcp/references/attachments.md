@@ -1,18 +1,13 @@
----
-name: fertigai-attachments
-description: Use when attaching functions, built-in system tools, or knowledge-base items to a fertig.ai agent branch (or to a specific workflow node) through the workspace MCP, including wiring a function's parameter sources and its response-to-variable assignments.
----
-
 # Managing branch attachments (fertigai_agent_attachments_get, fertigai_agent_branch_configure)
 
 ## Overview
-An agent branch calls tools and reads knowledge during a conversation through **attachments**: a function (user-defined or a built-in system tool) or a knowledge-base item, bound either to the whole branch or to one workflow node. Attachments are read and written declaratively, alongside the branch's config, through `fertigai_agent_branch_configure`. Shared MCP conventions (ids, pagination, errors, permissions) are in the fertigai-mcp skill; branch config itself is in the fertigai-agents skill. Every tool here also takes an optional `workspace` slug, required only when the connection is org-wide (see fertigai-mcp / `fertigai_whoami`).
+An agent branch calls tools and reads knowledge during a conversation through **attachments**: a function (user-defined or a built-in system tool) or a knowledge-base item, bound either to the whole branch or to one workflow node. Attachments are read and written declaratively, alongside the branch's config, through `fertigai_agent_branch_configure`. Shared MCP conventions (ids, pagination, errors, permissions) are in the skill index (SKILL.md); branch config itself is in agents.md. Every tool here also takes an optional `workspace` slug, required only when the connection is org-wide (see SKILL.md / `fertigai_whoami`).
 
 ## Tools
 | Tool | Args | Notes |
 |---|---|---|
 | `fertigai_agent_attachments_get` | `agent_id`, `branch_id` | current attachment state for the branch |
-| `fertigai_agent_branch_configure` | `agent_id`, `branch_id`, `config?`, `attachments?` | writes config and/or attachments in one call; `config` is documented in fertigai-agents |
+| `fertigai_agent_branch_configure` | `agent_id`, `branch_id`, `config?`, `attachments?` | writes config and/or attachments in one call; `config` is documented in agents.md |
 | `fertigai_system_tools_list` | none | the built-in tools available as attachments |
 | `fertigai_knowledge_base_list` | `parent_id?`, `search?`, `cursor?`, `page_size?` | browse knowledge-base items to find their `kbi_...` ids |
 
@@ -20,7 +15,7 @@ An agent branch calls tools and reads knowledge during a conversation through **
 The `attachments` object is declarative and replaces its whole domain: whatever you send for `functions` becomes the entire function-attachment state, and whatever you send for `knowledge_bases` becomes the entire knowledge-base state. There is no partial merge, so anything you leave out is removed - and that includes a whole missing sub-section: an `attachments` object that carries only `knowledge_bases` detaches EVERY function (and vice versa). Always send both sub-sections.
 
 To edit a branch, ALWAYS read both its config and its attachments first, then send them back together in one call:
-1. `fertigai_agent_branch_get { agent_id, branch_id }` to read the current `config` (see fertigai-agents).
+1. `fertigai_agent_branch_get { agent_id, branch_id }` to read the current `config` (see agents.md).
 2. `fertigai_agent_attachments_get { agent_id, branch_id }` to read the current `attachments`.
 3. Edit whichever you are changing (add, remove, or change entries).
 4. Send both back in one call: `fertigai_agent_branch_configure { agent_id, branch_id, config, attachments }`.
@@ -41,7 +36,7 @@ Reading and re-sending both is the safe default. Because each section is a full 
 }
 ```
 - `functions.branch` / `knowledge_bases.branch`: available across the whole agent (conventionally bound at the `start_agent` node).
-- `functions.nodes["<id>"]` / `knowledge_bases.nodes["<id>"]`: scoped to one workflow node. `<id>` is the `id` of a `function` or `subagent` node in the branch's `config.workflow` (see fertigai-agents and its `workflow-reference.md`).
+- `functions.nodes["<id>"]` / `knowledge_bases.nodes["<id>"]`: scoped to one workflow node. `<id>` is the `id` of a `function` or `subagent` node in the branch's `config.workflow` (see agents.md and its `agents-workflow.md`).
 
 ## FunctionAttachmentInput fields
 | Field | Type | Notes |

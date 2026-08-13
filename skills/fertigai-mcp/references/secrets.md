@@ -1,14 +1,9 @@
----
-name: fertigai-secrets
-description: Use when storing, rotating, or deleting fertig.ai workspace secrets (API keys and credentials used by functions, actions, and integrations) through the workspace MCP.
----
-
 # Managing secrets (fertigai_secrets_*)
 
 ## Overview
 A **secret** is an encrypted key/value used by functions, actions, and integrations. Secrets are **write-only over this API**: you can create, update (rotate), and delete them, and list their names, but you can never read a secret's value back.
 
-Shared conventions (ids, pagination, errors, permissions) are in the fertigai-mcp skill. Every tool here also takes an optional `workspace` slug, required only when the connection is org-wide (see fertigai-mcp / `fertigai_whoami`).
+Shared conventions (ids, pagination, errors, permissions) are in the skill index (SKILL.md). Every tool here also takes an optional `workspace` slug, required only when the connection is org-wide (see SKILL.md / `fertigai_whoami`).
 
 ## Tools
 | Tool | Args | Notes |

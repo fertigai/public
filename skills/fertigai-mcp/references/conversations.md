@@ -1,14 +1,9 @@
----
-name: fertigai-conversations
-description: Use when reading or searching a fertig.ai workspace's conversation history (past calls and chats, their transcripts and outcomes) through the workspace MCP.
----
-
 # Reading conversations (fertigai_conversations_*)
 
 ## Overview
 Conversations are **read-only** here: you can list or search them and fetch one in detail (transcript, outcome, extracted data). You cannot create or edit conversations through this API; agents produce them at runtime.
 
-Shared conventions (ids, pagination, errors, permissions) are in the fertigai-mcp skill. Every tool here also takes an optional `workspace` slug, required only when the connection is org-wide (see fertigai-mcp / `fertigai_whoami`).
+Shared conventions (ids, pagination, errors, permissions) are in the skill index (SKILL.md). Every tool here also takes an optional `workspace` slug, required only when the connection is org-wide (see SKILL.md / `fertigai_whoami`).
 
 ## Tools
 | Tool | Args |

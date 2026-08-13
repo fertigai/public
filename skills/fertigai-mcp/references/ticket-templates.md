@@ -1,14 +1,9 @@
----
-name: fertigai-ticket-templates
-description: Use when creating, editing, archiving, or listing fertig.ai ticket templates (the field and status schema for support tickets) through the workspace MCP.
----
-
 # Managing ticket templates (fertigai_ticket_templates_*)
 
 ## Overview
 A **ticket template** defines the shape of a support ticket: its custom `fields` and its `statuses` (the workflow states). Templates are archived rather than hard-deleted.
 
-Shared conventions (ids, pagination, errors, permissions) are in the fertigai-mcp skill. Every tool here also takes an optional `workspace` slug, required only when the connection is org-wide (see fertigai-mcp / `fertigai_whoami`).
+Shared conventions (ids, pagination, errors, permissions) are in the skill index (SKILL.md). Every tool here also takes an optional `workspace` slug, required only when the connection is org-wide (see SKILL.md / `fertigai_whoami`).
 
 ## Tools
 | Tool | Args |

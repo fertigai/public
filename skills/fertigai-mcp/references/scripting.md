@@ -1,12 +1,7 @@
----
-name: fertigai-scripting
-description: Use when writing the JavaScript/TypeScript inside a fertig.ai function or action - the run(ctx) entry point, the sandbox and limits, and the built-in primitives like mail.send, llm.send, http, time, objects, secrets, functions.invoke, and tickets.create.
----
-
 # fertig.ai script environment (functions and actions)
 
 ## Overview
-Functions and actions run the SAME sandboxed JavaScript: an ES module with a single `run(ctx)` export, executed in a sandboxed runtime targeting **ECMAScript 2020**. There is no DOM, no Node.js, no `require`, no npm imports, and no timers (`setTimeout`/`setInterval`); the only capabilities are the built-in primitives below. What differs between a function and an action is the `ctx` payload and how the return value is handled (see fertigai-functions and fertigai-actions).
+Functions and actions run the SAME sandboxed JavaScript: an ES module with a single `run(ctx)` export, executed in a sandboxed runtime targeting **ECMAScript 2020**. There is no DOM, no Node.js, no `require`, no npm imports, and no timers (`setTimeout`/`setInterval`); the only capabilities are the built-in primitives below. What differs between a function and an action is the `ctx` payload and how the return value is handled (see functions.md and actions.md).
 
 **TypeScript is accepted**: scripts may use type annotations, which are stripped before execution (types are editor-only, never enforced at runtime). Only erasable syntax is allowed - `enum`, `namespace`, constructor parameter properties, `<T>expr` assertions, and decorators are rejected at save time. Plain JavaScript works unchanged.
 
@@ -81,5 +76,5 @@ Global; the same set is available to functions and actions.
 - No DOM, no Node APIs, no timers, no `require`, no npm.
 
 ## ctx and return shape differ by script type
-- **Function**: `ctx` is param-centric (`ctx.params`, plus `event` and, when applicable, `connection`, `conversation_id`, `agent_id`, `mail`, `ticket`). It MUST return `{ status: <int 100-599>, data: <any> }`. See fertigai-functions.
-- **Action**: `ctx` is conversation-centric (`conversation`, `transcript`, `summary`, `classification`, `variables`, `workspace`, `params`, `event`). Its return value is stored verbatim, with no required shape. See fertigai-actions.
+- **Function**: `ctx` is param-centric (`ctx.params`, plus `event` and, when applicable, `connection`, `conversation_id`, `agent_id`, `mail`, `ticket`). It MUST return `{ status: <int 100-599>, data: <any> }`. See functions.md.
+- **Action**: `ctx` is conversation-centric (`conversation`, `transcript`, `summary`, `classification`, `variables`, `workspace`, `params`, `event`). Its return value is stored verbatim, with no required shape. See actions.md.
