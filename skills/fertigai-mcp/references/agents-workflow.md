@@ -122,7 +122,30 @@ Max inbound calls per minute before rejecting.
 
 ### gdpr
 ```
-{ "consent_required": false, "anonymize_data": false, "data_retention_days": 90,
-  "recording_retention_days": null, "recording_enabled": true }
+{ "consent_required": false, "data_retention_days": 90,
+  "recording_retention_days": null, "recording_enabled": true,
+  "anonymization": { "enabled": false, "caller_number": true, "called_number": false,
+                     "entities": [ ...all 46 entity paths, listed below... ] } }
 ```
 Values shown are the defaults (an omitted `gdpr` block keeps them; a present block replaces the whole group, with absent fields falling back to these defaults). `data_retention_days` is capped at 36500. `recording_retention_days` controls how long call audio is kept: `null`/omitted follows `data_retention_days`, `0` keeps no audio, and any value is capped at `data_retention_days`.
+
+#### anonymization
+
+**An `anonymization` object you send is taken literally.** Sending `{ "enabled": true }` with no `entities` means NO entity is anonymized, only the number options apply. To change one option, read the config, edit the object, and send it back whole. Only omitting `anonymization` entirely keeps the defaults above.
+
+- `enabled` is the master switch. While it is `false` the other fields are kept but have no effect.
+- `caller_number` (default `true`) removes the caller's number from the stored conversation, `called_number` (default `false`) removes the number that was called. These two govern the stored number fields only: a phone number spoken in the conversation or passed as a tool argument is covered by the `contact_number` entity.
+- `entities` is an allow list of the entity paths anonymized in the transcript, tool-call arguments and results, the summary, and dynamic variables. An entity that is not listed is NOT anonymized. Unknown or duplicate paths are rejected with `422`.
+- Anonymization runs after the call ends, and post-call analysis (summary, classification, extracted variables, actions) runs on the anonymized conversation. A conversation's `anonymized` flag means the branch's anonymization options were applied, so with every entity off the transcript is stored as spoken.
+- `anonymize_data` is deprecated. It is still accepted on write and still returned on read, mirroring `anonymization.enabled`, and `anonymization.enabled` wins when both are sent. It will be removed, so use `anonymization.enabled`.
+
+The 46 valid entity paths, grouped by prefix:
+
+| Prefix | Paths |
+|---|---|
+| (none) | `email_address`, `contact_number`, `dob`, `age`, `religious_belief`, `political_opinion`, `sexual_orientation`, `ethnicity_race`, `marital_status`, `occupation`, `physical_attribute`, `language`, `username`, `url`, `organization`, `date`, `date_interval` |
+| `name.` | `name.name_given`, `name.name_family`, `name.name_other` |
+| `financial_id.` | `financial_id.payment_card.payment_card_number`, `financial_id.payment_card.payment_card_expiration_date`, `financial_id.payment_card.payment_card_cvv`, `financial_id.bank_account.bank_account_number`, `financial_id.bank_account.bank_routing_number`, `financial_id.bank_account.swift_bic_code`, `financial_id.financial_id_other` |
+| `location.` | `location.location_address`, `location.location_city`, `location.location_postal_code`, `location.location_coordinate`, `location.location_state`, `location.location_country`, `location.location_other` |
+| `unique_id.` | `unique_id.government_issued_id`, `unique_id.account_number`, `unique_id.vehicle_id`, `unique_id.healthcare_number.medical_record_number`, `unique_id.healthcare_number.health_plan_beneficiary_number`, `unique_id.device_id`, `unique_id.unique_id_other` |
+| `medical.` | `medical.medical_condition`, `medical.medication`, `medical.medical_procedure`, `medical.medical_measurement`, `medical.medical_other` |

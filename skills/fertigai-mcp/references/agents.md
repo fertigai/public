@@ -39,7 +39,7 @@ The `config` section of `fertigai_agent_branch_configure` (and optionally `ferti
 | `post_call_analysis` | object | classification categories, extracted variables, summary, `actions_enabled` |
 | `security` | object | `rate_limit_per_minute` |
 | `guardrails` | object | `focus`, `manipulation`, `content` (+ 7 content categories), `custom` rules |
-| `gdpr` | object | `consent_required`, `anonymize_data`, `data_retention_days`, `recording_enabled` |
+| `gdpr` | object | `consent_required`, `anonymization` (master switch, number options, per-entity allow list), `data_retention_days`, `recording_enabled` |
 
 Nested groups are optional; omit one to keep backend defaults. The exact sub-fields, defaults, and enums for every group are in `agents-workflow.md`.
 
@@ -88,6 +88,7 @@ fertigai_agent_branch_configure {
 - Building a `config` or `workflow` from scratch and hitting a `422` validation error: start from `get` and edit; the workflow has many structural rules (see `agents-workflow.md`).
 - Referencing an undeclared variable in an expression edge or Update Context node: declare it in `dynamic_variables` first.
 - Adding a `function` node to the workflow without also sending its attachment in the same `fertigai_agent_branch_configure` call: the call is rejected (see attachments.md).
+- Sending `gdpr.anonymization` without its `entities` list: the list you send is taken literally, so `{ "enabled": true }` on its own anonymizes NO entity. Read the config, edit the object, send it back whole (see `agents-workflow.md`).
 - Confusing `agent_id` and `branch_id`: both are separate arguments on the branch tools.
 - A `403` even though the key has Agents-Edit: the workspace also needs the agents product enabled for these tools.
 
