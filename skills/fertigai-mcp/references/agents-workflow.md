@@ -124,18 +124,17 @@ Max inbound calls per minute before rejecting.
 ```
 { "consent_required": false, "data_retention_days": 90,
   "recording_retention_days": null, "recording_enabled": true,
-  "anonymization": { "enabled": false, "caller_number": true, "called_number": false,
-                     "entities": [ ...all 46 paths from the table below; send them all to keep the defaults... ] } }
+  "anonymization": { "enabled": false, "caller_number": true, "called_number": false, "entities": [] } }
 ```
-Values shown are the defaults (an omitted `gdpr` block keeps them; a present block replaces the whole group, with absent fields falling back to these defaults, `anonymization.entities` being the exception, see below). `data_retention_days` is capped at 36500. `recording_retention_days` controls how long call audio is kept: `null`/omitted follows `data_retention_days`, `0` keeps no audio, and any value is capped at `data_retention_days`.
+Values shown are the defaults (an omitted `gdpr` block keeps them; a present block replaces the whole group, with absent fields falling back to these defaults). `data_retention_days` is capped at 36500. `recording_retention_days` controls how long call audio is kept: `null`/omitted follows `data_retention_days`, `0` keeps no audio, and any value is capped at `data_retention_days`.
 
 #### anonymization
 
-**An `anonymization` object you send is taken literally.** Sending `{ "enabled": true }` with no `entities` means NO entity is anonymized, only the number options apply. To change one option, read the config, edit the object, and send it back whole. Only omitting `anonymization` entirely keeps the defaults above.
+**An `anonymization` object you send is taken literally.** Sending `{ "enabled": true }` with no `entities` means NO entity is anonymized, only the number options apply. You have to list the entities you want anonymized. To change one option, read the config, edit the object, and send it back whole.
 
 - `enabled` is the master switch. While it is `false` the other fields are kept but have no effect.
 - `caller_number` (default `true`) removes the caller's number from the stored conversation; `called_number` (default `false`) removes the number that was called. These two govern the stored number fields only: a phone number spoken in the conversation or passed as a tool argument is covered by the `contact_number` entity.
-- `entities` is an allow list of the entity paths anonymized in the transcript, tool-call arguments and results, the summary, and dynamic variables. An entity that is not listed is NOT anonymized. Unknown or duplicate paths are rejected with `422`.
+- `entities` is an allow list of the entity paths anonymized in the transcript, tool-call arguments and results, the summary, and dynamic variables. An entity that is not listed is NOT anonymized. List only the entities you really need: anonymization accuracy decreases as more entities are selected. Unknown or duplicate paths are rejected with `422`.
 - Anonymization runs after the call ends, and post-call analysis (summary, classification, extracted variables, actions) runs on the anonymized conversation. A conversation's `anonymized` flag means the branch's anonymization options were applied, so with every entity off, the transcript is stored as spoken.
 - `anonymize_data` is deprecated. It is still accepted on write and still returned on read, mirroring `anonymization.enabled`, and `anonymization.enabled` wins when both are sent. It will be removed, so use `anonymization.enabled`.
 
