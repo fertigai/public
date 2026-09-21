@@ -87,7 +87,9 @@ A `transfer_to_number` entry carries its transfer settings at the attachment lev
 - `number_source`: where the number comes from. Empty means `LLM`. The three values are case-sensitive, so write them exactly as shown: `"llm_prompt"` is not `"LLM_PROMPT"`, and any other spelling or casing is rejected with `422`.
   - `"LLM"`: the model picks one of `transfer_routes`; at least one route needs a non-empty `number`.
   - `"DYNAMIC_VARIABLE"`: the number comes from a branch dynamic variable; `transfer_dynamic_variable` is then REQUIRED and no routes are needed.
-  - `"LLM_PROMPT"`: no routes are used; the model works the number out from `transfer_prompt`. Routes you send are still stored and read back unchanged, so leaving the existing `transfer_routes` in place is safe and valid.
+  - `"LLM_PROMPT"`: no routes are used; the model works the number out from `transfer_prompt`.
+
+  In the two modes without routes, routes already on the entry are still stored and read back unchanged, so leaving the existing `transfer_routes` in place is safe and valid.
 - `transfer_prompt`: the instruction the model reads to determine the number, 1 to 2000 characters, counted after surrounding whitespace is trimmed (so a whitespace-only prompt is rejected). REQUIRED for `"LLM_PROMPT"`; omit it or send `null` for the other two sources.
 - `transfer_timeout_secs`: maximum `ATTENDED` ring time before the call returns to the agent; omitted reads as `30`.
 - Per-route `transfer_type`/`timeout_secs` are deprecated; use the attachment-level fields.
@@ -150,6 +152,6 @@ fertigai_agent_branch_configure {
 - Setting both `function_id` and `system_tool_type` on the same entry, or setting neither.
 - Omitting `connection_public_id` for a function that requires a connection.
 - A `number_source` the entry cannot satisfy: `"LLM"` needs a route with a number, `"DYNAMIC_VARIABLE"` a `transfer_dynamic_variable`, `"LLM_PROMPT"` a `transfer_prompt` of 1 to 2000 characters after trimming. That, and any value outside the three (including a lowercase `"llm_prompt"`, since the values are case-sensitive), is a `422`.
-- Writing a transfer number as `+49 (0)30 1234`: this is not a validation error and saves without complaint, then dials `+490301234`, which nobody answers. Write `+49 30 1234`. A number carrying letters is likewise refused when the call is placed, not on save.
+- Writing a transfer number as `+49 (0)30 1234`: this is not a validation error and saves without complaint, then dials `+490301234`, which nobody answers. Write `+49 30 1234`. Letters are also caught only when the call is placed, never on save.
 
 Writes need Integrations-Manage for the `attachments` section and Agents-Edit for the `config` section (both, when a call sends both).
