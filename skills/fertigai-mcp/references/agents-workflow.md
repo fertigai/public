@@ -35,11 +35,13 @@ Every node's `data` includes `type` (equal to the node-level type) plus the node
 | `function` | runs one attached function | `label?` (the function attachment is bound to the node, not in `data`) | requires exactly one attached function, supplied via the `attachments` section of the same `fertigai_agent_branch_configure` call (see attachments.md); can branch on a `result` edge (success/failure) |
 | `update_context` | sets dynamic variables | `updates: [{ variableName, value }]` (see below) | every `variableName` must be a declared dynamic variable |
 | `end_call` | ends the call | `label?` | terminal: no outgoing edges |
-| `transfer` | phone transfer | `transferType` (`"COLD"`\|`"ATTENDED"`, empty = COLD), `numberSource` (`"LLM"`\|`"DYNAMIC_VARIABLE"`, empty = LLM), `dynamicVariable`, `timeoutSecs`, `routes: [{ number, condition }]` | terminal when `transferType` is `COLD`; an `ATTENDED` transfer returns control, so outgoing edges are then allowed but must be `unconditional`. With `numberSource: "LLM"` at least one route needs a non-empty `number`; with `"DYNAMIC_VARIABLE"` no routes are needed but `dynamicVariable` must name the variable holding the number. `timeoutSecs` is the `ATTENDED` max ring time (omitted = 30) |
+| `transfer` | phone transfer | `transferType` (`"COLD"`\|`"ATTENDED"`, empty = COLD), `numberSource` (`"LLM"`\|`"DYNAMIC_VARIABLE"`\|`"LLM_PROMPT"`, empty = LLM), `dynamicVariable`, `numberPrompt`, `timeoutSecs`, `routes: [{ number, condition }]` | terminal when `transferType` is `COLD`; an `ATTENDED` transfer returns control, so outgoing edges are then allowed but must be `unconditional`. With `numberSource: "LLM"` at least one route needs a non-empty `number`; with `"DYNAMIC_VARIABLE"` no routes are needed but `dynamicVariable` must name the variable holding the number; with `"LLM_PROMPT"` no routes are used either and `numberPrompt` (1 to 2000 characters) is what the model reads to determine the number. `timeoutSecs` is the `ATTENDED` max ring time (omitted = 30) |
 
 An `update_context` entry's `value` is a tagged object: `{ "kind": "literal", "value": <literal>, "valueType": "string"|"number"|"boolean" }`, `{ "kind": "var", "name": "<declared variable>" }`, or `{ "kind": "llm", "prompt": "<instruction>", "valueType": ... }`.
 
 (Per-route `transferType`/`timeoutSecs` on transfer routes are deprecated; the node-level fields above replace them. Old graphs still carrying them read back with defaults `COLD`/`30`.)
+
+`numberPrompt` decides only WHICH number is dialled, not whether to transfer: that stays with the agent's prompt and the built-in transfer guidance. Keep it as narrow as you can, because the agent can dial any number the prompt allows and the call is carried on the workspace's own trunk. Numbers from every source must pass the same dial check (see the transfer section of attachments.md).
 
 ### System prompt and goals
 
@@ -73,7 +75,7 @@ In short: write shared instructions once in `config.system_prompt`, give the Sta
 - A `function` node has exactly one attached function, sent in the `attachments` section of the same configure call (a `function` node with no matching attachment is rejected; see attachments.md).
 - `start_agent` and `subagent` outgoing edges are conditioned (no `unconditional`).
 - Every variable referenced by an expression edge or an `update_context` node is declared in `config.dynamic_variables`.
-- A transfer with `numberSource: "LLM"` has at least one route with a non-empty `number`; with `"DYNAMIC_VARIABLE"`, a non-empty `dynamicVariable`.
+- A transfer can find a number: `numberSource: "LLM"` has at least one route with a non-empty `number`; `"DYNAMIC_VARIABLE"` a non-empty `dynamicVariable`; `"LLM_PROMPT"` a `numberPrompt` of 1 to 2000 characters. A `numberSource` outside those three is rejected as well.
 
 ## Setting groups (nested in config)
 

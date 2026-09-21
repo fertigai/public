@@ -46,7 +46,7 @@ Reading and re-sending both is the safe default. Because each section is a full 
 | `parameter_values` | object | keyed by the function's parameter key, see below. Empty for system tools other than `transfer_to_number` |
 | `connection_public_id` | string | required only when the underlying function needs a connection |
 | `assignments` | array | response-to-variable assignments, see below |
-| `transfer_type`, `number_source`, `transfer_dynamic_variable`, `transfer_timeout_secs`, `transfer_routes` | | only for the `transfer_to_number` system tool, see below |
+| `transfer_type`, `number_source`, `transfer_dynamic_variable`, `transfer_prompt`, `transfer_timeout_secs`, `transfer_routes` | | only for the `transfer_to_number` system tool, see below |
 
 ## parameter_values: the four sources
 Each key in `parameter_values` maps to a tagged object with exactly one source:
@@ -84,11 +84,35 @@ A `transfer_to_number` entry carries its transfer settings at the attachment lev
   "transfer_routes": [ { "number": "+15551234567", "condition": "customer asks for a human" } ] }
 ```
 - `transfer_type`: `"COLD"` (connects directly) or `"ATTENDED"` (rings the destination first; the call returns to the agent if unanswered). Empty means `COLD`.
-- `number_source`: `"LLM"` (the model picks a route; at least one route needs a non-empty `number`) or `"DYNAMIC_VARIABLE"` (the number comes from a variable; `transfer_dynamic_variable` is then REQUIRED and no routes are needed). Empty means `LLM`.
+- `number_source`: where the number comes from. Empty means `LLM`.
+  - `"LLM"`: the model picks one of `transfer_routes`; at least one route needs a non-empty `number`.
+  - `"DYNAMIC_VARIABLE"`: the number comes from a branch dynamic variable; `transfer_dynamic_variable` is then REQUIRED and no routes are needed.
+  - `"LLM_PROMPT"`: no routes are used; the model works the number out from `transfer_prompt`.
+- `transfer_prompt`: the instruction the model reads to determine the number, 1 to 2000 characters. REQUIRED for `"LLM_PROMPT"`; omit it or send `null` for the other two sources.
 - `transfer_timeout_secs`: maximum `ATTENDED` ring time before the call returns to the agent; omitted reads as `30`.
 - Per-route `transfer_type`/`timeout_secs` are deprecated; use the attachment-level fields.
 
+Every write is checked: an unknown `number_source`, `"LLM"` without a route carrying a number, `"DYNAMIC_VARIABLE"` without a variable, and `"LLM_PROMPT"` without a prompt (or one over 2000 characters) are each rejected with `422`. The same rules apply to the `transfer` workflow node (see agents-workflow.md).
+
 These fields only apply to a `transfer_to_number` system-tool entry; other attachments leave them empty.
+
+### Prompt as the number source
+```json
+{ "system_tool_type": "transfer_to_number",
+  "transfer_type": "ATTENDED",
+  "number_source": "LLM_PROMPT",
+  "transfer_prompt": "Dial the branch the caller names: Berlin 030 1234, Hamburg 040 5678. Nothing else." }
+```
+`transfer_prompt` decides only WHICH number is dialled. WHETHER to transfer is still governed by the agent's own prompt and the built-in transfer guidance, so do not put the trigger condition in the prompt.
+
+Keep the prompt as narrow as you can. The agent can dial any number the prompt allows, and the call is carried on the workspace's own trunk.
+
+### Transfer numbers
+Whichever source supplies it, a number is cleaned before dialling: spaces, hyphens, parentheses, dots and slashes are removed, and what remains must be digits, `*`, `#` and an optional leading `+`, with at least one digit and at most 32 characters. Anything else and the transfer is refused.
+
+- National numbers (`030 1234`) and internal extensions (`23`) are fine. A number with a leading zero is dialled as written; a bare international number (7 to 15 digits, no leading zero) gets its `+`.
+- The `(0)` notation is not understood: write `+49 30 1234`, not `+49 (0)30 1234`.
+- Letters are never allowed.
 
 ## Function nodes need a matching attachment
 A workflow `function` node runs exactly one attached function. If a branch's `config.workflow` has a `function` node, the same `fertigai_agent_branch_configure` call MUST include a matching entry under `attachments.functions.nodes["<that node's id>"]`, or the whole call is rejected. Set the workflow and its function-node attachments together in one call.
@@ -125,5 +149,7 @@ fertigai_agent_branch_configure {
 - Leaving a workflow `function` node without a matching node-scoped attachment in the same call: the call is rejected.
 - Setting both `function_id` and `system_tool_type` on the same entry, or setting neither.
 - Omitting `connection_public_id` for a function that requires a connection.
+- A `number_source` the entry cannot satisfy: `"LLM"` needs a route with a number, `"DYNAMIC_VARIABLE"` a `transfer_dynamic_variable`, `"LLM_PROMPT"` a `transfer_prompt` of 1 to 2000 characters. That, and any value outside the three, is a `422`.
+- Writing a transfer number as `+49 (0)30 1234`: the `(0)` notation is not understood, and a number carrying letters is refused. Write `+49 30 1234`.
 
 Writes need Integrations-Manage for the `attachments` section and Agents-Edit for the `config` section (both, when a call sends both).
