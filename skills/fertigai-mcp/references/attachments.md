@@ -83,16 +83,16 @@ A `transfer_to_number` entry carries its transfer settings at the attachment lev
   "number_source": "LLM",
   "transfer_routes": [ { "number": "+15551234567", "condition": "customer asks for a human" } ] }
 ```
-- `transfer_type`: `"COLD"` (connects directly) or `"ATTENDED"` (rings the destination first; the call returns to the agent if unanswered). Empty means `COLD`.
+- `transfer_type`: exactly `"COLD"` (connects directly) or `"ATTENDED"` (rings the destination first; the call returns to the agent if unanswered), case-sensitive in the same way as `number_source`. Empty means `COLD`.
 - `number_source`: where the number comes from. Empty means `LLM`. The three values are case-sensitive, so write them exactly as shown: `"llm_prompt"` is not `"LLM_PROMPT"`, and any other spelling or casing is rejected with `422`.
   - `"LLM"`: the model picks one of `transfer_routes`; at least one route needs a non-empty `number`.
   - `"DYNAMIC_VARIABLE"`: the number comes from a branch dynamic variable; `transfer_dynamic_variable` is then REQUIRED and no routes are needed.
-  - `"LLM_PROMPT"`: no routes are used; the model works the number out from `transfer_prompt`.
-- `transfer_prompt`: the instruction the model reads to determine the number, 1 to 2000 characters. REQUIRED for `"LLM_PROMPT"`; omit it or send `null` for the other two sources.
+  - `"LLM_PROMPT"`: no routes are used; the model works the number out from `transfer_prompt`. Routes you send are still stored and read back unchanged, so leaving the existing `transfer_routes` in place is safe and valid.
+- `transfer_prompt`: the instruction the model reads to determine the number, 1 to 2000 characters, counted after surrounding whitespace is trimmed (so a whitespace-only prompt is rejected). REQUIRED for `"LLM_PROMPT"`; omit it or send `null` for the other two sources.
 - `transfer_timeout_secs`: maximum `ATTENDED` ring time before the call returns to the agent; omitted reads as `30`.
 - Per-route `transfer_type`/`timeout_secs` are deprecated; use the attachment-level fields.
 
-Every write is checked: an unknown `number_source`, `"LLM"` without a route carrying a number, `"DYNAMIC_VARIABLE"` without a variable, and `"LLM_PROMPT"` without a prompt (or one over 2000 characters) are each rejected with `422`. The same rules apply to the `transfer` workflow node (see agents-workflow.md).
+Every write is checked: an unknown `number_source`, `"LLM"` without a route carrying a number, `"DYNAMIC_VARIABLE"` without a variable, and `"LLM_PROMPT"` without a prompt (or one longer than 2000 characters after trimming) are each rejected with `422`. The same rules apply to the `transfer` workflow node (see agents-workflow.md).
 
 These fields only apply to a `transfer_to_number` system-tool entry; other attachments leave them empty.
 
@@ -108,10 +108,10 @@ These fields only apply to a `transfer_to_number` system-tool entry; other attac
 Keep the prompt as narrow as you can. The agent can dial any number the prompt allows, and the call is carried on the workspace's own trunk.
 
 ### Transfer numbers
-Whichever source supplies it, a number is cleaned before dialling: spaces (ordinary, tab, and the non-breaking and thin kinds), hyphens (ordinary and non-breaking), parentheses, dots and slashes are removed. What remains must be digits, `*`, `#` and an optional leading `+`, with at least one digit and at most 32 characters. Anything else and the transfer is refused.
+Whichever source supplies it, a number is cleaned before dialling: spaces (ordinary, tab, and the non-breaking and thin kinds), hyphens (ordinary and non-breaking), parentheses, dots and slashes are removed. What remains must be digits, `*`, `#` and an optional leading `+`, with at least one digit and at most 32 characters. Anything else and the transfer is refused. These checks run when the call is placed, not when the configuration is saved: a number that fails them saves without error, and the transfer fails during the call.
 
 - National numbers (`030 1234`) and internal extensions (`23`) are fine. A number with a leading zero is dialled as written; a bare international number (7 to 15 digits, no leading zero) gets its `+`.
-- The `(0)` notation is not understood: write `+49 30 1234`, not `+49 (0)30 1234`.
+- The `(0)` notation is not understood, and it is not an error either: `+49 (0)30 1234` becomes `+490301234` and dials a number nobody answers. Write `+49 30 1234`.
 - Letters are never allowed, and a percent-escaped character (`%23` for `#`) is refused rather than decoded.
 
 ## Function nodes need a matching attachment
@@ -149,7 +149,7 @@ fertigai_agent_branch_configure {
 - Leaving a workflow `function` node without a matching node-scoped attachment in the same call: the call is rejected.
 - Setting both `function_id` and `system_tool_type` on the same entry, or setting neither.
 - Omitting `connection_public_id` for a function that requires a connection.
-- A `number_source` the entry cannot satisfy: `"LLM"` needs a route with a number, `"DYNAMIC_VARIABLE"` a `transfer_dynamic_variable`, `"LLM_PROMPT"` a `transfer_prompt` of 1 to 2000 characters. That, and any value outside the three (including a lowercase `"llm_prompt"`, since the values are case-sensitive), is a `422`.
-- Writing a transfer number as `+49 (0)30 1234`: the `(0)` notation is not understood, and a number carrying letters is refused. Write `+49 30 1234`.
+- A `number_source` the entry cannot satisfy: `"LLM"` needs a route with a number, `"DYNAMIC_VARIABLE"` a `transfer_dynamic_variable`, `"LLM_PROMPT"` a `transfer_prompt` of 1 to 2000 characters after trimming. That, and any value outside the three (including a lowercase `"llm_prompt"`, since the values are case-sensitive), is a `422`.
+- Writing a transfer number as `+49 (0)30 1234`: this is not a validation error and saves without complaint, then dials `+490301234`, which nobody answers. Write `+49 30 1234`. A number carrying letters is likewise refused when the call is placed, not on save.
 
 Writes need Integrations-Manage for the `attachments` section and Agents-Edit for the `config` section (both, when a call sends both).
