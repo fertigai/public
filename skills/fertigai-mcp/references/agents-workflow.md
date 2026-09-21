@@ -75,7 +75,7 @@ In short: write shared instructions once in `config.system_prompt`, give the Sta
 - A `function` node has exactly one attached function, sent in the `attachments` section of the same configure call (a `function` node with no matching attachment is rejected; see attachments.md).
 - `start_agent` and `subagent` outgoing edges are conditioned (no `unconditional`).
 - Every variable referenced by an expression edge or an `update_context` node is declared in `config.dynamic_variables`.
-- A transfer can find a number: `numberSource: "LLM"` has at least one route with a non-empty `number`; `"DYNAMIC_VARIABLE"` a non-empty `dynamicVariable`; `"LLM_PROMPT"` a `numberPrompt` of 1 to 2000 characters. A `numberSource` outside those three is rejected as well.
+- A transfer can find a number: `numberSource: "LLM"` has at least one route with a non-empty `number`; `"DYNAMIC_VARIABLE"` a non-empty `dynamicVariable`; `"LLM_PROMPT"` a `numberPrompt` of 1 to 2000 characters. `numberSource` is case-sensitive, so a value outside those three exact spellings, `"llm_prompt"` included, is rejected as well.
 
 ## Setting groups (nested in config)
 

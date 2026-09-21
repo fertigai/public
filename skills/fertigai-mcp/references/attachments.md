@@ -84,7 +84,7 @@ A `transfer_to_number` entry carries its transfer settings at the attachment lev
   "transfer_routes": [ { "number": "+15551234567", "condition": "customer asks for a human" } ] }
 ```
 - `transfer_type`: `"COLD"` (connects directly) or `"ATTENDED"` (rings the destination first; the call returns to the agent if unanswered). Empty means `COLD`.
-- `number_source`: where the number comes from. Empty means `LLM`.
+- `number_source`: where the number comes from. Empty means `LLM`. The three values are case-sensitive, so write them exactly as shown: `"llm_prompt"` is not `"LLM_PROMPT"`, and any other spelling or casing is rejected with `422`.
   - `"LLM"`: the model picks one of `transfer_routes`; at least one route needs a non-empty `number`.
   - `"DYNAMIC_VARIABLE"`: the number comes from a branch dynamic variable; `transfer_dynamic_variable` is then REQUIRED and no routes are needed.
   - `"LLM_PROMPT"`: no routes are used; the model works the number out from `transfer_prompt`.
@@ -149,7 +149,7 @@ fertigai_agent_branch_configure {
 - Leaving a workflow `function` node without a matching node-scoped attachment in the same call: the call is rejected.
 - Setting both `function_id` and `system_tool_type` on the same entry, or setting neither.
 - Omitting `connection_public_id` for a function that requires a connection.
-- A `number_source` the entry cannot satisfy: `"LLM"` needs a route with a number, `"DYNAMIC_VARIABLE"` a `transfer_dynamic_variable`, `"LLM_PROMPT"` a `transfer_prompt` of 1 to 2000 characters. That, and any value outside the three, is a `422`.
+- A `number_source` the entry cannot satisfy: `"LLM"` needs a route with a number, `"DYNAMIC_VARIABLE"` a `transfer_dynamic_variable`, `"LLM_PROMPT"` a `transfer_prompt` of 1 to 2000 characters. That, and any value outside the three (including a lowercase `"llm_prompt"`, since the values are case-sensitive), is a `422`.
 - Writing a transfer number as `+49 (0)30 1234`: the `(0)` notation is not understood, and a number carrying letters is refused. Write `+49 30 1234`.
 
 Writes need Integrations-Manage for the `attachments` section and Agents-Edit for the `config` section (both, when a call sends both).
