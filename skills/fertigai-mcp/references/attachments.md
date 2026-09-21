@@ -108,11 +108,11 @@ These fields only apply to a `transfer_to_number` system-tool entry; other attac
 Keep the prompt as narrow as you can. The agent can dial any number the prompt allows, and the call is carried on the workspace's own trunk.
 
 ### Transfer numbers
-Whichever source supplies it, a number is cleaned before dialling: spaces, hyphens, parentheses, dots and slashes are removed, and what remains must be digits, `*`, `#` and an optional leading `+`, with at least one digit and at most 32 characters. Anything else and the transfer is refused.
+Whichever source supplies it, a number is cleaned before dialling: spaces (ordinary, tab, and the non-breaking and thin kinds), hyphens (ordinary and non-breaking), parentheses, dots and slashes are removed. What remains must be digits, `*`, `#` and an optional leading `+`, with at least one digit and at most 32 characters. Anything else and the transfer is refused.
 
 - National numbers (`030 1234`) and internal extensions (`23`) are fine. A number with a leading zero is dialled as written; a bare international number (7 to 15 digits, no leading zero) gets its `+`.
 - The `(0)` notation is not understood: write `+49 30 1234`, not `+49 (0)30 1234`.
-- Letters are never allowed.
+- Letters are never allowed, and a percent-escaped character (`%23` for `#`) is refused rather than decoded.
 
 ## Function nodes need a matching attachment
 A workflow `function` node runs exactly one attached function. If a branch's `config.workflow` has a `function` node, the same `fertigai_agent_branch_configure` call MUST include a matching entry under `attachments.functions.nodes["<that node's id>"]`, or the whole call is rejected. Set the workflow and its function-node attachments together in one call.
