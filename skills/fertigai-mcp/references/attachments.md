@@ -72,8 +72,9 @@ Each assignment extracts a value from the function's JSON result using a dot-not
 
 `fertigai_agent_branch_configure` auto-creates the output dynamic variable for every `dynamic_variable` name referenced in an assignment; you do not need to declare these in `config.dynamic_variables` (doing so anyway is harmless).
 
-- Each `dynamic_variable` must be non-empty, unique within that attachment's assignments, and must not start with `system__`; `value_path` must be non-empty. Otherwise the call is rejected.
-- `assignments` apply only to user-defined functions. A system tool (`system_tool_type`) ignores them, so do not put assignments on `end_call`, `language_detection`, or `transfer_to_number`.
+- Each `dynamic_variable` must match `^[a-zA-Z_][a-zA-Z0-9_]*$`, be unique within that attachment's assignments, and must not start with `system__` in any casing (`SYSTEM__x` and `System__x` are reserved too); `value_path` must be non-empty. Otherwise the call is rejected.
+- A target becomes a declared variable, so no two targets anywhere in the call may differ only by case (the uniqueness check above is per attachment and exact, so such a pair passes it and fails on the merged list), and no target may differ only by case from a variable the branch already declares: an assignment targeting `City` beside `city` is a `422`.
+- `assignments` apply only to user-defined functions. A system tool (`system_tool_type`) ignores them, so do not put assignments on `end_call`, `language_detection`, or `transfer_to_number`; they are not applied at call time, but their targets still count for the naming rules above.
 
 ## Transfer settings: transfer_to_number only
 A `transfer_to_number` entry carries its transfer settings at the attachment level:
@@ -148,6 +149,7 @@ fertigai_agent_branch_configure {
 ## Common mistakes
 - Sending a partial `attachments` object and expecting a merge: each section (`functions`, `knowledge_bases`) fully replaces its current state, and a missing sub-section counts as empty. Read first with `fertigai_agent_attachments_get`, edit, send everything back.
 - An `Llm` parameter source without a `description_override`: rejected; the description is required.
+- An assignment target that differs only by case from another target in the same call or from a variable the branch declares, or one prefixed `system__` in any casing: each is a `422`, so match the declared spelling exactly.
 - Leaving a workflow `function` node without a matching node-scoped attachment in the same call: the call is rejected.
 - Setting both `function_id` and `system_tool_type` on the same entry, or setting neither.
 - Omitting `connection_public_id` for a function that requires a connection.

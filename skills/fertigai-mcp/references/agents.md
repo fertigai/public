@@ -44,7 +44,7 @@ The `config` section of `fertigai_agent_branch_configure` (and optionally `ferti
 Nested groups are optional; omit one to keep backend defaults. The exact sub-fields, defaults, and enums for every group are in `agents-workflow.md`.
 
 ## Dynamic variables
-`dynamic_variables` is an array of `{ name, default_value?, source? }`. `name` must match `^[a-zA-Z_][a-zA-Z0-9_]*$`; names starting with `system__` are reserved. Reference a variable anywhere in config strings, prompts, and welcome messages with `{{ name }}`. Workflow expression edges and Update Context nodes may only reference a **declared** variable, or the save is rejected. Function outputs can also be written back into a variable (see attachments.md).
+`dynamic_variables` is an array of `{ name, default_value?, source? }`. `name` must match `^[a-zA-Z_][a-zA-Z0-9_]*$`, a shape the backend enforces only on function output assignment targets (see attachments.md). Declared names are unique regardless of case and the `system__` prefix is reserved in every casing, so `city` beside `City`, the same name twice, or a name like `SYSTEM__x` or `System__x` is a `422` on every write that carries the list (branch config update, configure, create with a config). Reference a variable anywhere in config strings, prompts, and welcome messages with `{{ name }}`. References are case-sensitive and are never corrected for you, so write the declared spelling exactly: `{{ City }}` does not resolve to a declared `city`. Workflow expression edges and Update Context nodes may only reference a **declared** variable, or the save is rejected; a transfer `dynamicVariable` naming `City` instead of `city` saves without complaint and resolves empty at call time, and a `DynamicVariable` parameter source doing the same saves but leaves the attachment flagged stale (see attachments.md). Function outputs can also be written back into a variable (see attachments.md).
 
 At call time the platform always supplies `caller_id` and `called_id` (the caller's and the called number) as conversation variables, even when undeclared; to reference one in an expression edge or Update Context node, declare it like any other variable.
 
@@ -86,7 +86,9 @@ fertigai_agent_branch_configure {
 ## Common mistakes
 - Trying to change config via `fertigai_agents_rename` or a nonexistent `fertigai_agents_update`: config only changes through `fertigai_agent_branch_configure`.
 - Building a `config` or `workflow` from scratch and hitting a `422` validation error: start from `get` and edit; the workflow has many structural rules (see `agents-workflow.md`).
-- Referencing an undeclared variable in an expression edge or Update Context node: declare it in `dynamic_variables` first.
+- Referencing an undeclared variable in an expression edge or Update Context node: declare it in `dynamic_variables` first. A reference that differs only by case from a declared name counts as undeclared.
+- Declaring two names that differ only by case (`city` and `City`), or any `system__`-prefixed name whatever its casing: each is a `422`.
+- Referencing a variable from memory that you did not declare in this call: the stored spelling is what a reference must match, and function output variables are auto-created and never appear in the config you sent, so read them back with `fertigai_agent_branch_get` first.
 - Adding a `function` node to the workflow without also sending its attachment in the same `fertigai_agent_branch_configure` call: the call is rejected (see attachments.md).
 - Sending `gdpr.anonymization` without its `entities` list: the list you send is taken literally, so `{ "enabled": true }` on its own anonymizes NO entity. Read the config, edit the object, send it back whole (see `agents-workflow.md`).
 - Confusing `agent_id` and `branch_id`: both are separate arguments on the branch tools.
