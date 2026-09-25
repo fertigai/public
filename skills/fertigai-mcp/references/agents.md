@@ -63,6 +63,7 @@ Reading and re-sending both is the safe default: it stops a config edit from sil
 - Agent create seeds one active branch named "Main".
 - `fertigai_agent_branch_create { agent_id, name, from_branch_id }` forks a branch: it copies the entire config (model, prompt, the whole workflow graph, variables, and every setting group) plus classification categories, extracted variables, and attachments (post-call actions, knowledge bases, function attachments). The new branch is created inactive.
 - `fertigai_agent_set_active_branch` makes a branch live. You cannot delete the active branch.
+- Deleting an agent, or a branch, that another agent's `agent_transfer` node targets is refused with `409`, naming that agent and node; change or remove the node first.
 - Editing config never changes the agent's name (use `fertigai_agents_rename`).
 
 ## Example: create then configure
