@@ -22,7 +22,7 @@ Companion to `agents.md`. This is the detailed shape of `config.workflow` (the c
 
 The node's kind appears in TWO places: the node-level `type` AND `data.type`. The editor reads the kind from `data.type`. The backend automatically mirrors `data.type` from the node-level `type` on every read and save, so a node that omits or mismatches `data.type` is repaired rather than rejected, but always set `data.type` equal to the node-level `type` so the editor renders it correctly. The rest of `data` is node-specific (see the table); mirror the shape from an existing branch's config rather than inventing fields.
 
-### The 8 node types
+### Node types
 
 Every node's `data` includes `type` (equal to the node-level type) plus the node-specific fields below.
 
@@ -36,6 +36,7 @@ Every node's `data` includes `type` (equal to the node-level type) plus the node
 | `update_context` | sets dynamic variables | `updates: [{ variableName, value }]` (see below) | every `variableName` must be a declared dynamic variable |
 | `end_call` | ends the call | `label?` | terminal: no outgoing edges |
 | `transfer` | phone transfer | `transferType` (exactly `"COLD"`\|`"ATTENDED"`, empty = COLD), `numberSource` (`"LLM"`\|`"DYNAMIC_VARIABLE"`\|`"LLM_PROMPT"`, empty = LLM), `dynamicVariable`, `numberPrompt`, `timeoutSecs`, `routes: [{ number, condition }]` | terminal when `transferType` is `COLD`; an `ATTENDED` transfer returns control, so outgoing edges are then allowed but must be `unconditional`. With `numberSource: "LLM"` at least one route needs a non-empty `number`; with `"DYNAMIC_VARIABLE"` no routes are needed but `dynamicVariable` must name the variable holding the number; with `"LLM_PROMPT"` no routes are used either and `numberPrompt` (1 to 2000 characters, counted after surrounding whitespace is trimmed) is what the model reads to determine the number. In both of those modes existing `routes` are kept and read back unchanged, so re-sending them is safe. `timeoutSecs` is the `ATTENDED` max ring time (omitted = 30) |
+| `agent_transfer` | hands the caller to a branch of an agent in the same workspace | `targetAgentId` (`agt_...`), `targetBranchId` (`br_...`, a branch of that agent), `transferMessage` (spoken before the handover, at most 500 characters after trimming, empty = none), `playWelcomeMessage` (boolean, default `false`; the target agent opens with its own welcome message only when `true`), `delayMs` (whole number 0 to 10000, default 0) | terminal: no outgoing edges. The target must be a branch of that agent in this workspace and not the branch being saved, otherwise the save is rejected with `422` naming the node. The target branch must have been saved (synced) at least once before this branch is saved, otherwise this branch's sync fails and names the target. Two new branches that hand over to each other cannot both be saved first: save one of them without the node, save the other, then add the node. |
 
 An `update_context` entry's `value` is a tagged object: `{ "kind": "literal", "value": <literal>, "valueType": "string"|"number"|"boolean" }`, `{ "kind": "var", "name": "<declared variable>" }`, or `{ "kind": "llm", "prompt": "<instruction>", "valueType": ... }`.
 
@@ -71,11 +72,12 @@ In short: write shared instructions once in `config.system_prompt`, give the Sta
 - An enabled workflow has at least one node; exactly one `start_agent` and exactly one `first_message`.
 - `first_message` has no incoming edge and exactly one `unconditional` outgoing edge to `start_agent`.
 - No self-loops; no edges referencing a missing node; every node except `first_message` has at least one incoming edge.
-- Terminal nodes (`end_call`; a `COLD` `transfer`) have no outgoing edges; an `ATTENDED` transfer's outgoing edges are `unconditional` only.
+- Terminal nodes (`end_call`; `agent_transfer`; a `COLD` `transfer`) have no outgoing edges; an `ATTENDED` transfer's outgoing edges are `unconditional` only.
 - A `function` node has exactly one attached function, sent in the `attachments` section of the same configure call (a `function` node with no matching attachment is rejected; see attachments.md).
 - `start_agent` and `subagent` outgoing edges are conditioned (no `unconditional`).
 - Every variable referenced by an expression edge or an `update_context` node is declared in `config.dynamic_variables`.
 - A transfer can find a number: `numberSource: "LLM"` has at least one route with a non-empty `number`; `"DYNAMIC_VARIABLE"` a non-empty `dynamicVariable`; `"LLM_PROMPT"` a `numberPrompt` of 1 to 2000 characters after trimming. `numberSource` is case-sensitive, so a value outside those three exact spellings, `"llm_prompt"` included, is rejected as well.
+- An `agent_transfer` node names both `targetAgentId` and `targetBranchId`, and that branch belongs to that agent in this workspace and is not the branch being saved.
 
 ## Setting groups (nested in config)
 
