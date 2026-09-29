@@ -1,7 +1,7 @@
 # Managing functions (fertigai_functions_*)
 
 ## Overview
-A **function** is a reusable custom tool (JavaScript) that an agent can call during a conversation. It has a name, a description (what the model sees), a parameter JSON Schema, and a `script`. Functions can optionally require a connection for external credentials.
+A **function** is a reusable custom tool (JavaScript) that an agent can call during a conversation. It has a name, a description (what the model sees), a parameter JSON Schema, and a `script`. Functions can optionally declare connection roles for external credentials.
 
 Functions generated from a workspace's external MCP servers are listed with `source: "mcp"`; ready-made integrations are a separate catalogue (integrations.md).
 
@@ -12,16 +12,16 @@ The script is an ES module with a `run(ctx)` export (TypeScript accepted), and t
 |---|---|
 | `fertigai_functions_list` | `search?`, `source?` (`custom` default, `mcp`, `all`), `cursor?`, `page_size?` |
 | `fertigai_functions_get` | `id` |
-| `fertigai_functions_create` | `name`, `description`, `style`, `parameter_schema`, `script`, `requires_connection_slug?`, `visual_graph?` |
-| `fertigai_functions_update` | `id`, `name`, `description`, `parameter_schema`, `script`, `requires_connection_slug?`, `visual_graph?` |
+| `fertigai_functions_create` | `name`, `description`, `style`, `parameter_schema`, `script`, `connections?`, `visual_graph?` |
+| `fertigai_functions_update` | `id`, `name`, `description`, `parameter_schema`, `script`, `connections?`, `visual_graph?` |
 | `fertigai_functions_delete` | `id` |
-| `fertigai_functions_test` | `script`, `parameter_schema`, `parameter_values`, `ctx_params?`, `function_id?`, `connection_public_id?`, `visual_graph?` |
+| `fertigai_functions_test` | `script`, `parameter_schema`, `parameter_values`, `ctx_params?`, `function_id?`, `connection_bindings?`, `visual_graph?` |
 
 ## Fields
 - `style`: integer. `1` = Script (a JavaScript function, the common case), `2` = Visual (the drag-and-drop builder, which uses `visual_graph` instead of `script`).
 - `parameter_schema`: a JSON Schema object describing the arguments the agent must supply. Send at least `{ "type": "object", "properties": {} }`.
 - `script`: the JavaScript module (see the return contract below).
-- `requires_connection_slug`: set only if the function needs an external connection's credentials.
+- `connections`: the connection roles the script reads, `[{ "role", "slug", "required" }]`, at most 8. `role` is lowercase letters, digits and underscores, max 32 characters; `slug` is a connection type from the workspace's connection catalogue; a non-empty list must contain a required `default` role. The script reads `ctx.connections[role]`, and `ctx.connection` is the `default` role. Omit it or send `[]` when the function needs no connection. Responses return `connections` in the catalogue entry shape, with the `connected` candidates for each role (integrations.md).
 - `style` is immutable, so `update` does not take it.
 
 ## The function `ctx`
@@ -53,6 +53,7 @@ fertigai_functions_create {
 ## Common mistakes
 - Returning a bare value instead of `{ status, data }`: fails as `502`. Always return the two-field object.
 - Forgetting to `await` an outbound primitive (mail, http, ...): the run fails with a "missing await" error.
+- Declaring `connections` without a required `default` role: rejected.
 - Passing `style` to `update`: it is immutable; omit it.
 - Expecting a "run this function now" tool over MCP: there is none. Functions are invoked by agents at runtime; use `fertigai_functions_test` for dry runs.
 
