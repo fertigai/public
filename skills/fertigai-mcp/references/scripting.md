@@ -62,7 +62,7 @@ Global; the same set is available to functions and actions.
 - `btoa(s)` / `atob(s)` / `base64Encode(s)` / `base64Decode(s)` - UTF-8-aware base64.
 
 **Workspace integrations (dynamic, per workspace)**
-- `ctx.connection` / `ctx.connections[role]`: decrypted credentials of the bound connection(s). `ctx.connections` is keyed by the role the integration or attachment declares; `ctx.connection` is the `default` role. `integrations.<provider>.<fn>(connectionPublicId, params)` -> `Promise` calls an integration from a script; connectionless ones are `integrations.standalone.<fn>(params)`.
+- `ctx.connection` / `ctx.connections[role]`: decrypted credentials of the bound connection(s). `ctx.connections` is keyed by the role the integration, function or action declares; `ctx.connection` is the `default` role. `integrations.<provider>.<fn>(connectionPublicId, params)` -> `Promise` calls an integration from a script; connectionless ones are `integrations.standalone.<fn>(params)`.
 - `mcp.<server>.<tool>(params)` -> `Promise`. Calls a tool on an MCP server registered in the workspace.
 
 **Not implemented (throw if called):** `sms.send`, `urlshort.shorten`.

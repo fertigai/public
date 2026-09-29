@@ -23,7 +23,7 @@ An **integration** is a ready-made function or action from the catalogue (built-
   parameter_schema: { ... }   // get only
 }
 ```
-- `connections`: the roles the script reads through `ctx.connections[role]` (`ctx.connection` is the `default` role). `slug` is the connection type; `connected` lists the workspace connections of that type you can bind. An entry with an empty `connections` needs no connection.
+- `connections`: the roles the script reads through `ctx.connections[role]` (`ctx.connection` is the `default` role). `slug` is the connection type; `connected` lists the workspace connections of that type you can bind. An entry with an empty `connections` needs no connection. Custom functions and actions declare their roles the same way (functions.md, actions.md) and are bound through the same `connection_bindings`.
 - `attachable`: every required role has at least one connected candidate and the entry can run. You can attach an entry whose required role has no candidate; it stays attached and is skipped at runtime until you bind one.
 
 ## Attaching
@@ -46,7 +46,7 @@ fertigai_agent_actions_attach {
 ## Common mistakes
 - Looking for integrations in `fertigai_functions_list` / `fertigai_actions_list`: they are not there; use the catalogue tools.
 - Creating a copy of an integration with `fertigai_functions_create`: unnecessary; attach by key.
-- Sending `connection_public_id` for an integration: use `connection_bindings` with the role name.
+- Sending a top-level `connection_public_id`: every attachment binds through `connection_bindings` with the role name.
 - Binding a connection of the wrong type: the `connection_public_id` must come from that role's `connected` list (same `slug`).
 
 Reads and writes need Integrations-Manage.
