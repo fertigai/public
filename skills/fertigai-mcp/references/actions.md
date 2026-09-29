@@ -15,6 +15,17 @@ Code actions are an ES module with a `run(ctx)` export (TypeScript accepted). Th
 | `fertigai_actions_delete` | `id` |
 | `fertigai_actions_test` | `script`, `parameter_schema?`, `parameter_values?`, `ctx_params?`, one of `conversation_public_id` or `script_ctx`, `action_id?`, `connection_public_id?` |
 
+## Attaching actions to a branch
+Actions run after a conversation ends, once per attachment on the branch.
+| Tool | Args |
+|---|---|
+| `fertigai_agent_actions_list` | `agent_id`, `branch_id` |
+| `fertigai_agent_actions_attach` | `agent_id`, `branch_id`, one of `action_id` / `integration_key`, `parameter_values`, `label?`, `connection_public_id?` (custom action with a connection), `connection_bindings?` (integration) |
+| `fertigai_agent_actions_update` | `agent_id`, `branch_id`, `attached_action_id`, `parameter_values`, `label?`, `connection_public_id?`, `connection_bindings?` |
+| `fertigai_agent_actions_detach` | `agent_id`, `branch_id`, `attached_action_id` |
+
+`attached_action_id` is the `aba_...` id from the list or attach response. `update` is a full replacement: send every value you want kept. `parameter_values` uses the same four sources as function attachments (attachments.md). Integration actions come from `fertigai_integration_actions_list` (integrations.md).
+
 ## Fields
 - `style`: integer. `2` = Code (put the action logic in `script_source`), `1` = Visual (uses `pipeline`). For a code action use `style: 2` with a `script_source`.
 - Do NOT send `preset_key` on create; it is server-managed and rejected.
@@ -31,7 +42,7 @@ An action's `ctx` is conversation-centric, built from the conversation that trig
   workspace: { id, slug },
   params: { /* the action's resolved parameters */ },
   event: { type: "post-call-analysis" },
-  connection?: { /* credentials, when connection-backed */ } }
+  connection?: { /* the default role's credentials */ }, connections?: { [role]: { /* credentials */ } } }
 ```
 Use `conversation.normalize(ctx)` (see scripting.md) to render the transcript into readable lines.
 

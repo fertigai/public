@@ -42,7 +42,10 @@ Reading and re-sending both is the safe default. Because each section is a full 
 | Field | Type | Notes |
 |---|---|---|
 | `function_id` | string | the function's public id (`fn_...`), for a user-defined function |
-| `system_tool_type` | string | one of the built-in tool slugs from `fertigai_system_tools_list`: currently `end_call`, `language_detection`, `transfer_to_number`. Mutually exclusive with `function_id`; exactly one of the two must be set |
+| `system_tool_type` | string | one of the built-in tool slugs from `fertigai_system_tools_list`: currently `end_call`, `language_detection`, `transfer_to_number`. Exactly one of `function_id`, `system_tool_type`, `integration_key` must be set |
+| `integration_key` | string | the catalogue key of an integration function (integrations.md) |
+| `label` | string | integration attachments only: shown instead of the catalogue name, max 80 chars |
+| `connection_bindings` | array | integration attachments only: `[{ role, connection_public_id }]`, one per role; required roles must be bound |
 | `parameter_values` | object | keyed by the function's parameter key, see below. Empty for system tools other than `transfer_to_number` |
 | `connection_public_id` | string | required only when the underlying function needs a connection |
 | `assignments` | array | response-to-variable assignments, see below |
@@ -151,7 +154,7 @@ fertigai_agent_branch_configure {
 - An `Llm` parameter source without a `description_override`: rejected; the description is required.
 - An assignment target that differs only by case from another target in the same call or from a variable the branch declares, or one prefixed `system__` in any casing: each is a `422`, so match the declared spelling exactly.
 - Leaving a workflow `function` node without a matching node-scoped attachment in the same call: the call is rejected.
-- Setting both `function_id` and `system_tool_type` on the same entry, or setting neither.
+- Setting more or fewer than one of `function_id`, `system_tool_type`, `integration_key`.
 - Omitting `connection_public_id` for a function that requires a connection.
 - A `number_source` the entry cannot satisfy: `"LLM"` needs a route with a number, `"DYNAMIC_VARIABLE"` a `transfer_dynamic_variable`, `"LLM_PROMPT"` a `transfer_prompt` of 1 to 2000 characters after trimming. That, and any value outside the three (including a lowercase `"llm_prompt"`, since the values are case-sensitive), is a `422`.
 - Writing a transfer number as `+49 (0)30 1234`: this is not a validation error and saves without complaint, then dials `+490301234`, which nobody answers. Write `+49 30 1234`. Letters are also caught only when the call is placed, never on save.
