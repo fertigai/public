@@ -46,7 +46,8 @@ Call `fertigai_whoami` right after connecting to confirm which kind you have (it
 | Agents + branches | agents_list/get/create/rename/delete, agent_branch_get/create/configure, agent_set_active_branch | references/agents.md (+ agents-workflow.md) |
 | Branch attachments | agent_attachments_get, agent_branch_configure (shared with config), system_tools_list, knowledge_base_list | references/attachments.md |
 | Functions | functions_list/get/create/update/delete/test | references/functions.md |
-| Actions | actions_list/get/create/update/delete/test | references/actions.md |
+| Actions | actions_list/get/create/update/delete/test, agent_actions_list/attach/update/detach | references/actions.md |
+| Integrations (catalogue: ready-made functions and actions, attached by key) | integrations_list/get, integration_actions_list/get | references/integrations.md |
 | Script environment | (used by functions and actions) | references/scripting.md |
 | Ticket templates | ticket_templates_list/get/create/update/archive/unarchive | references/ticket-templates.md |
 | Mail templates | mail_templates_list/get/create/update/delete | references/mail-templates.md |
