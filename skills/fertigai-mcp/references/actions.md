@@ -1,7 +1,7 @@
 # Managing actions (fertigai_actions_*)
 
 ## Overview
-An **action** is an automation that runs in response to a conversation (for example a post-call step). It has a name, a description, a `style`, a parameter schema, and one body: a `script_source` (code), a `pipeline` (structured steps), or an `http_request` (one HTTP request that AMP compiles to the script on save).
+An **action** is an automation that runs in response to a conversation (for example a post-call step). It has a name, a description, a `style`, a parameter schema, and one body: a `script_source` (code), a `pipeline` (structured steps), or an `http_request` (one HTTP request).
 
 Code actions are an ES module with a `run(ctx)` export (TypeScript accepted). The full built-in primitive set (`mail`, `llm`, `http`, `time`, `objects`, `secrets`, `functions.invoke`, `tickets`, ...), the runtime, and the sandbox limits are documented in the scripting reference (scripting.md). Shared MCP conventions (ids, pagination, errors, permissions) are in the skill index (SKILL.md). Every tool here also takes an optional `workspace` slug, required only when the connection is org-wide (see SKILL.md / `fertigai_whoami`).
 
@@ -13,7 +13,7 @@ Code actions are an ES module with a `run(ctx)` export (TypeScript accepted). Th
 | `fertigai_actions_create` | `name`, `description`, `style`, `script_source?`, `pipeline?`, `http_request?`, `parameter_schema?`, `connections?` |
 | `fertigai_actions_update` | `id`, `name`, `description`, `style`, `script_source?`, `pipeline?`, `http_request?`, `parameter_schema?`, `connections?` |
 | `fertigai_actions_delete` | `id` |
-| `fertigai_actions_test` | `script`, `parameter_schema?`, `parameter_values?`, `ctx_params?`, one of `conversation_public_id` or `script_ctx`, `action_id?`, `connection_bindings?`, `http_request?` |
+| `fertigai_actions_test` | `script?`, `parameter_schema?`, `parameter_values?`, `ctx_params?`, one of `conversation_public_id` or `script_ctx`, `action_id?`, `connection_bindings?`, `http_request?` |
 
 ## Attaching actions to a branch
 Actions run after a conversation ends, once per attachment on the branch.
@@ -48,7 +48,7 @@ An action's `ctx` is conversation-centric, built from the conversation that trig
 Use `conversation.normalize(ctx)` (see scripting.md) to render the transcript into readable lines.
 
 ## HTTP actions
-`http_request` has the same shape, enums, encoding and `{ status, data }` result as for functions (functions.md, HTTP functions); the result is stored as the execution result. On `test`, send `"script": ""` with it. Actions accept these placeholders on top of the function ones (`params`, `connection`, `connections`, `secrets`):
+`http_request` has the same shape, enums, placeholder syntax, encoding and `{ status, data }` result as for functions (functions.md, HTTP functions); the result is stored as the execution result. On `test`, `script` is optional when `http_request` is set. Responses for HTTP rows return an empty `script_source`; read `http_request` instead. Actions fail `create`/`update` with 422 `invalid-http-request` (same detail format, also for a missing `http_request`) and `test` with `http-request-invalid`. Actions accept these placeholders on top of the function ones (`params`, `connection`, `connections`, `secrets`):
 | Placeholder | Resolves to |
 |---|---|
 | `{{conversation.<field>}}` | a conversation field, e.g. `conversation.caller.number` |
