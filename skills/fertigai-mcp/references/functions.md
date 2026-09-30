@@ -1,7 +1,7 @@
 # Managing functions (fertigai_functions_*)
 
 ## Overview
-A **function** is a reusable custom tool (JavaScript) that an agent can call during a conversation. It has a name, a description (what the model sees), a parameter JSON Schema, and a `script`. Functions can optionally declare connection roles for external credentials.
+A **function** is a reusable custom tool (JavaScript) that an agent can call during a conversation. It has a name, a description (what the model sees), a parameter JSON Schema, and a `script` (or a `visual_graph` or an `http_request` that AMP compiles to the script on save). Functions can optionally declare connection roles for external credentials.
 
 Functions generated from a workspace's external MCP servers are listed with `source: "mcp"`; ready-made integrations are a separate catalogue (integrations.md).
 
@@ -12,13 +12,13 @@ The script is an ES module with a `run(ctx)` export (TypeScript accepted), and t
 |---|---|
 | `fertigai_functions_list` | `search?`, `source?` (`custom` default, `mcp`, `all`), `cursor?`, `page_size?` |
 | `fertigai_functions_get` | `id` |
-| `fertigai_functions_create` | `name`, `description`, `style`, `parameter_schema`, `script`, `connections?`, `visual_graph?` |
-| `fertigai_functions_update` | `id`, `name`, `description`, `parameter_schema`, `script`, `connections?`, `visual_graph?` |
+| `fertigai_functions_create` | `name`, `description`, `style`, `parameter_schema`, `script`, `connections?`, `visual_graph?`, `http_request?` |
+| `fertigai_functions_update` | `id`, `name`, `description`, `parameter_schema`, `script`, `connections?`, `visual_graph?`, `http_request?` |
 | `fertigai_functions_delete` | `id` |
-| `fertigai_functions_test` | `script`, `parameter_schema`, `parameter_values`, `ctx_params?`, `function_id?`, `connection_bindings?`, `visual_graph?` |
+| `fertigai_functions_test` | `script`, `parameter_schema`, `parameter_values`, `ctx_params?`, `function_id?`, `connection_bindings?`, `visual_graph?`, `http_request?` |
 
 ## Fields
-- `style`: integer. `1` = Script (a JavaScript function, the common case), `2` = Visual (the drag-and-drop builder, which uses `visual_graph` instead of `script`).
+- `style`: integer. `1` = Script (a JavaScript function, the common case), `2` = Visual (the drag-and-drop builder, which uses `visual_graph` instead of `script`), `3` = HTTP (one HTTP request, `http_request` instead of `script`; AMP compiles it to the script on save, see HTTP functions below).
 - `parameter_schema`: a JSON Schema object describing the arguments the agent must supply. Send at least `{ "type": "object", "properties": {} }`.
 - `script`: the JavaScript module (see the return contract below).
 - `connections`: the connection roles the script reads, `[{ "role", "slug", "required" }]`, at most 8. `role` is lowercase letters, digits and underscores, max 32 characters; `slug` is a connection type from the workspace's connection catalogue; a non-empty list must contain a required `default` role. The script reads `ctx.connections[role]`, and `ctx.connection` is the `default` role. Omit it or send `[]` when the function needs no connection. Responses return `connections` in the catalogue entry shape, with the `connected` candidates for each role (integrations.md).
@@ -38,8 +38,35 @@ It has NO transcript or conversation history (that is the action `ctx`; see acti
 ## The return contract (strict)
 A function MUST return `{ status: <integer 100-599>, data: <any JSON> }`. `status` becomes the HTTP status the caller or agent sees; `data` becomes the raw JSON response body (no wrapping envelope). Returning any other shape fails as `502 function-invalid-return-shape`. A thrown error surfaces as `500`, a timeout as `504`.
 
+## HTTP functions
+A style `3` function is one HTTP request, described by `http_request` (send it on `create`, `update` and `test`, and send no `script`). Enums are integers:
+```
+{ "method": 2,                                   // 1 GET, 2 POST, 3 PUT, 4 PATCH, 5 DELETE
+  "url": "https://{{connection.subdomain}}.zendesk.com/api/v2/tickets",
+  "query":   [ { "key": "async", "value": "{{params.async}}" } ],
+  "headers": [ { "key": "accept", "value": "application/json" } ],
+  "auth": { "kind": 3, "username": "{{connection.email}}/token", "password": "{{connection.api_token}}" },
+  "body": { "kind": 2, "content": "{ \"ticket\": { \"subject\": \"{{params.subject}}\", \"priority\": \"{{params.priority}}\" } }" },
+  "version": 1 }
+```
+- `auth.kind`: `1` None, `2` Bearer (`token`), `3` Basic (`username`, `password`), `4` API key (`api_key_name`, `api_key_value`, `api_key_placement`: `1` header, `2` query).
+- `body.kind`: `1` None, `2` JSON, `3` Text. GET and DELETE take no body (kind `1`). JSON and Text set `content-type` unless a header row already does.
+- Query and header keys are literal and unique (headers case-insensitive); an `authorization` header row conflicts with any auth kind but None.
+
+Every `url`, query and header value, auth value and body `content` is a template: literal text with `{{ path }}` placeholders.
+| Placeholder | Resolves to |
+|---|---|
+| `{{params.<key>}}` | a parameter value (`ctx.params`) |
+| `{{connection.<field>}}` | a field of the `default` connection role |
+| `{{connections.<role>.<field>}}` | a field of a named connection role |
+| `{{secrets.<NAME>}}` | a workspace secret |
+
+Encoding: placeholders in the URL are URL-encoded. A query row whose value resolves to the empty string is left out, so optional parameters stay optional. In a JSON body every placeholder must sit inside a JSON string; a string that is exactly one placeholder passes the value through with its type (numbers, booleans, objects, and an unset value drops the key), while mixed text is stringified.
+
+Result: `{ status, data }` with the upstream status and the response body, parsed as JSON when it is JSON, else the raw text. A network failure returns `{ status: 502, data: { error } }`. An invalid definition fails `create`, `update` and `test` with `422` and `http_request invalid: <field>: <message>` (for example `body.content`).
+
 ## Test before you save
-`fertigai_functions_test` runs a draft (without saving) and returns the outcome and logs. Always test a new or changed `script` before `create` or `update`.
+`fertigai_functions_test` runs a draft (without saving) and returns the outcome and logs. Always test a new or changed `script` (or `visual_graph`, `http_request`) before `create` or `update`. The tool requires `script`; with `http_request` send `"script": ""`.
 
 ## Example
 ```
@@ -48,6 +75,14 @@ fertigai_functions_create {
   "style": 1, "parameter_schema": { "type": "object", "properties": {} },
   "script": "export async function run(ctx) {\n  const result = Math.random() < 0.5 ? 'heads' : 'tails'\n  return { status: 200, data: { result } }\n}"
 }
+fertigai_functions_create {
+  "name": "Order Status", "description": "Look up an order's status by its number.",
+  "style": 3,
+  "parameter_schema": { "type": "object", "properties": { "order_number": { "type": "string" } }, "required": ["order_number"] },
+  "http_request": { "method": 1, "url": "https://shop.example.com/api/orders/{{params.order_number}}",
+    "query": [], "headers": [], "auth": { "kind": 2, "token": "{{secrets.SHOP_API_TOKEN}}" },
+    "body": { "kind": 1, "content": "" }, "version": 1 }
+}
 ```
 
 ## Common mistakes
@@ -55,6 +90,8 @@ fertigai_functions_create {
 - Forgetting to `await` an outbound primitive (mail, http, ...): the run fails with a "missing await" error.
 - Declaring `connections` without a required `default` role: rejected.
 - Passing `style` to `update`: it is immutable; omit it.
+- An unquoted placeholder in a JSON body (`"n": {{params.n}}`): rejected with `422`. Quote it (`"n": "{{params.n}}"`); a whole-string placeholder keeps the value's type.
+- Sending `script` together with `http_request` on `create` or `update`: HTTP functions take only `http_request`.
 - Expecting a "run this function now" tool over MCP: there is none. Functions are invoked by agents at runtime; use `fertigai_functions_test` for dry runs.
 
 Writes need Integrations-Manage.
