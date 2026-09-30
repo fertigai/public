@@ -20,7 +20,7 @@ Call `fertigai_whoami` FIRST, before any other tool, on every new connection. It
 }
 ```
 - **`grant: "workspace"`**: this connection is already scoped to one workspace. Every other tool call works as before; you do not need to pass `workspace`.
-- **`grant: "org_wide"`**: this connection can reach every workspace you're an active member of in the org. Every other `fertigai_*` workspace tool then REQUIRES a `workspace` argument: a slug taken from this response's `workspaces[]`. A call that omits it fails with an error telling you to pass one.
+- **`grant: "org_wide"`**: this connection can reach every workspace you're a member or manager of in the org. Every other `fertigai_*` workspace tool then REQUIRES a `workspace` argument: a slug taken from this response's `workspaces[]`. A call that omits it fails with an error telling you to pass one.
 - **`workspaces`** lists only what this connection can reach: every workspace in the org for an org-wide grant, or the single bound workspace for a per-workspace grant (including a `wsk_` key).
 
 Skipping `whoami` and guessing whether `workspace` is needed will fail on an org-wide connection and is never necessary: always call it first.
@@ -34,7 +34,7 @@ Two connection kinds, depending on whether you connect to one workspace or to ev
   - Every tool call is already scoped to `<workspace-slug>`; the optional `workspace` argument is ignored.
 - **Org-wide** (opt-in):
   - URL: `https://<your-org-host>/api/v1/mcp` (no workspace slug in the path)
-  - Header: an org-wide OAuth grant (connect once, reach every workspace you're an active member of in the org).
+  - Header: an org-wide OAuth grant (connect once, reach every workspace you're a member or manager of in the org).
   - Every workspace tool call REQUIRES a `workspace` argument (a slug), since the connection has no single workspace to default to.
 
 Call `fertigai_whoami` right after connecting to confirm which kind you have (its `grant` field) and, on an org-wide connection, which workspace slugs you can target.
