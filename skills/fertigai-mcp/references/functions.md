@@ -30,7 +30,7 @@ A function's `ctx` is param-centric:
 { params: { /* the typed arguments, matching parameter_schema */ },
   event: { type: "agent-invocation" | "mailhook" | "ticket-trigger" | "manual-test" | "function-call", ... },
   connection?: { /* the default role's credentials */ }, connections?: { [role]: { /* credentials */ } },
-  conversation_id?: "cv_...",   // present when an agent calls it mid-call
+  conversation_id?: "conv_...",   // present when an agent calls it mid-call
   agent_id?: "agt_..." }
 ```
 It has NO transcript or conversation history (that is the action `ctx`; see actions.md). Mail-hook runs additionally receive `ctx.mail` (the inbound message) and ticket-trigger runs receive `ctx.ticket`. `ctx.event` carries the trigger detail (see scripting.md).
