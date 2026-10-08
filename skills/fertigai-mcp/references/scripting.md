@@ -55,6 +55,9 @@ Global; the same set is available to functions and actions.
 - `objects.delete(kind, id)` -> `boolean` (`false` when already gone).
 - A record is `{ id /* cor_... */, name, externalId, data, createdAt, updatedAt }`.
 
+**Short links**
+- `urlshort.shorten(url, { ttlSeconds?, oneTime? }?)` -> `Promise<string>`, the short URL. The link belongs to the running workspace (or organization) and is listed on its Short links page, where it can be revoked; `ttlSeconds` makes it expire, `oneTime` stops it after the first visit. Throws on an invalid URL.
+
 **Transcript helper**
 - `conversation.normalize(ctx)` -> `string` (synchronous, no `await`). Formats `ctx.transcript` into `Agent:` / `User:` lines.
 
@@ -65,12 +68,12 @@ Global; the same set is available to functions and actions.
 - `ctx.connection` / `ctx.connections[role]`: decrypted credentials of the bound connection(s). `ctx.connections` is keyed by the role the integration, function or action declares; `ctx.connection` is the `default` role. `integrations.<provider>.<fn>(connectionPublicId, params)` -> `Promise` calls an integration from a script; connectionless ones are `integrations.standalone.<fn>(params)`.
 - `mcp.<server>.<tool>(params)` -> `Promise`. Calls a tool on an MCP server registered in the workspace.
 
-**Not implemented (throw if called):** `sms.send`, `urlshort.shorten`.
+**Not implemented (throw if called):** `sms.send`.
 
 ## Sandbox limits
 - Wall-clock timeout: 30 s (a caller may request less, never more).
 - Memory 64 MB; stack 1 MB; script source max 64 KiB.
-- Outbound calls per run: fetch + http 50, integrations 50, mcp 50, objects 50, `functions.invoke` 10, mail 10, `tickets.create` 5, llm 5. Exceeding a quota throws a catchable error.
+- Outbound calls per run: fetch + http 50, integrations 50, mcp 50, objects 50, `functions.invoke` 10, mail 10, `tickets.create` 5, llm 5, `urlshort.shorten` 10. Exceeding a quota throws a catchable error.
 - HTTP response body cap 10 MiB.
 - Private-network addresses are blocked for all outbound HTTP and SMTP.
 - No DOM, no Node APIs, no timers, no `require`, no npm.
