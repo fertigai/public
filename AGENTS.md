@@ -12,7 +12,7 @@ Public Agent Skills for driving a fertig.ai workspace through its MCP server. Ma
 
 - Document only customer-visible behaviour: tool names, arguments, fields, limits, errors and workflows as a workspace user sees them. No internal implementation details, service names, infrastructure, environment variables or issue-tracker references in the skill text.
 - Keep `SKILL.md` lean; depth goes into the matching `references/<domain>.md`. When a tool is added, removed or renamed, update the catalogue table in `SKILL.md` and the reference that covers it.
-- A new reference file needs a row in the `SKILL.md` table and in the `README.md` table. Keep file names stable: `SKILL.md` points readers at a hosted copy by file name.
+- A new reference file needs a row in the `SKILL.md` table and in the `README.md` table.
 - Keep the frontmatter `name` equal to the folder name and the `description` a single "Use when ..." sentence.
 
 ## Validate
