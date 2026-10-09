@@ -56,7 +56,7 @@ Global; the same set is available to functions and actions.
 - A record is `{ id /* cor_... */, name, externalId, data, createdAt, updatedAt }`.
 
 **Short links**
-- `urlshort.shorten(url, { ttlSeconds?, oneTime? }?)` -> `Promise<string>`, the short URL. The link belongs to the running workspace (or organization) and is listed on its Short links page, where it can be revoked; `ttlSeconds` makes it expire, `oneTime` stops it after the first visit. Throws on an invalid URL.
+- `urlshort.shorten(url, { ttlSeconds?, oneTime? }?)` -> `Promise<string>`, the short URL. The link belongs to the running workspace (or organization) and is listed on its Short links page, where it can be revoked; `ttlSeconds` sets when it expires, `oneTime` stops it after the first visit. Links expire after 90 days unless `ttlSeconds` is given (at most 365 days). Throws on an invalid URL.
 
 **Transcript helper**
 - `conversation.normalize(ctx)` -> `string` (synchronous, no `await`). Formats `ctx.transcript` into `Agent:` / `User:` lines.
