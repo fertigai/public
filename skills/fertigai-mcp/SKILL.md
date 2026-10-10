@@ -1,12 +1,12 @@
 ---
 name: fertigai-mcp
-description: Use when managing a fertig.ai workspace through its MCP endpoint - creating or editing agents, branch attachments, functions, actions (including writing their JavaScript/TypeScript scripts), ticket templates, mail templates, or secrets, reading conversations, or checking SIP trunk health - via the fertigai_* tools. Detailed per-domain guides are bundled under references/.
+description: Use when managing a fertig.ai workspace through its MCP endpoint - creating or editing agents, branch attachments, functions, actions (including writing their JavaScript/TypeScript scripts), ticket templates, mail templates, or secrets, reading conversations, or listing SIP trunks and checking their health - via the fertigai_* tools. Detailed per-domain guides are bundled under references/.
 ---
 
 # fertig.ai Workspace MCP (fertigai_*)
 
 ## Overview
-The workspace MCP exposes your fertig.ai workspace configuration as MCP tools, all named `fertigai_*`. Point an MCP client at your workspace endpoint, authenticate with a workspace API key, and the tools let you manage agents and their configuration and attachments, automation (functions and actions), ticket and mail templates, and secrets, read conversation history, and check SIP trunk health. Every tool respects the API key's role permissions.
+The workspace MCP exposes your fertig.ai workspace configuration as MCP tools, all named `fertigai_*`. Point an MCP client at your workspace endpoint, authenticate with a workspace API key, and the tools let you manage agents and their configuration and attachments, automation (functions and actions), ticket and mail templates, and secrets, read conversation history, and list SIP trunks and check their health. Every tool respects the API key's role permissions.
 
 ## Start with `fertigai_whoami`
 Call `fertigai_whoami` FIRST, before any other tool, on every new connection. It takes no arguments and tells you how to call every other tool correctly:
@@ -53,7 +53,7 @@ Call `fertigai_whoami` right after connecting to confirm which kind you have (it
 | Mail templates | mail_templates_list/get/create/update/delete | references/mail-templates.md |
 | Secrets | secrets_list/create/update/delete | references/secrets.md |
 | Conversations (read only) | conversations_list/get | references/conversations.md |
-| SIP trunks (read only) | sip_trunks_health | references/sip-trunks.md |
+| SIP trunks (read only) | sip_trunks_list, sip_trunks_health | references/sip-trunks.md |
 
 Before using a domain's tools, READ its reference file (path relative to this skill) for field details, workflows, and gotchas. `references/scripting.md` covers the JavaScript/TypeScript environment shared by functions and actions (the `run(ctx)` contract, built-in primitives like `mail.send` and `llm.send`, sandbox limits). `fertigai_whoami` is workspace-agnostic (no `workspace` argument, documented above); every other tool listed here is workspace-scoped (see Conventions below). If a reference file is missing locally, fetch the latest from `https://cdn.fertig.ai/skills/fertigai-mcp/references/<name>.md` (this file: `https://cdn.fertig.ai/skills/fertigai-mcp/SKILL.md`).
 

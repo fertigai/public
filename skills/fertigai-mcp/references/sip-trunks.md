@@ -1,17 +1,18 @@
-# Checking SIP trunk health (fertigai_sip_trunks_health)
+# Listing SIP trunks and checking their health (fertigai_sip_trunks_list, fertigai_sip_trunks_health)
 
 ## Overview
-SIP trunk health is **read-only** here: you can check whether one trunk, or every trunk in the workspace, is registered (or, for trunks that authenticate by IP address, reachable) and able to carry calls. You cannot create, edit, enable or disable trunks through this API; configure them in the portal.
+SIP trunks are **read-only** here: you can list the workspace's trunks and check whether one trunk is registered (or, for trunks that authenticate by IP address, reachable) and able to carry calls. You cannot create, edit, enable or disable trunks through this API; configure them in the portal.
 
 Shared conventions (ids, errors, permissions) are in the skill index (SKILL.md). The tool also takes an optional `workspace` slug, required only when the connection is org-wide (see SKILL.md / `fertigai_whoami`).
 
 ## Tools
 | Tool | Args |
 |---|---|
-| `fertigai_sip_trunks_health` | `id?` |
+| `fertigai_sip_trunks_list` | `cursor?`, `page_size?` |
+| `fertigai_sip_trunks_health` | `id` |
 
-- With `id` (a SIP trunk's `st_` id), the tool returns that trunk's verdict object.
-- Without `id`, it returns an array of verdicts for the workspace's trunks (the first 100; there is no `cursor`).
+- `fertigai_sip_trunks_list` returns the workspace's trunks with their settings and last reported registration state (paginated, see SKILL.md). Use it to find a trunk's `st_` id. It never contains passwords.
+- `fertigai_sip_trunks_health` checks exactly one trunk: pass its `st_` id and it returns that trunk's verdict object. To check several trunks, call it once per trunk.
 - Checking a trunk that authenticates by IP address sends it a live reachability check, so the call can take a few seconds. A result is reused for about 30 seconds.
 
 Each verdict has these fields:
@@ -64,19 +65,26 @@ fertigai_sip_trunks_health { "id": "st_..." }
 }
 ```
 
-Every trunk in the workspace:
+An IP-address trunk:
 ```
-fertigai_sip_trunks_health {}
+fertigai_sip_trunks_health { "id": "st_..." }
 ```
 ```json
-[
-  { "sip_trunk_id": "st_...", "status": "HEALTHY", "registration_status": "REGISTERED", "registration_status_at": "2026-10-10T08:14:40+00:00" },
-  { "sip_trunk_id": "st_...", "status": "HEALTHY", "registration_status": "STATIC", "registration_status_at": "", "reachable": true, "probe_sip_status": 200, "probe_rtt_ms": 42, "probed_at": "2026-10-10T08:14:52+00:00" }
-]
+{
+  "sip_trunk_id": "st_...",
+  "status": "HEALTHY",
+  "registration_status": "STATIC",
+  "registration_status_at": "",
+  "reachable": true,
+  "probe_sip_status": 200,
+  "probe_rtt_ms": 42,
+  "probed_at": "2026-10-10T08:14:52+00:00"
+}
 ```
 
 ## Common mistakes
 - Expecting the tool to create a health URL: it only reads health; the credential-free health URL for uptime monitors is created on the trunk in the portal.
-- Inventing a trunk id. Call the tool without `id` first and take an `st_` id from its result.
+- Inventing a trunk id. Call `fertigai_sip_trunks_list` first and take an `st_` id from its result.
+- Calling the health tool without `id`: it checks one trunk per call and refuses a call without one.
 
-Requires the Telephony-View permission.
+Both tools require the Telephony-View permission.
