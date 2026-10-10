@@ -1,12 +1,12 @@
 ---
 name: fertigai-mcp
-description: Use when managing a fertig.ai workspace through its MCP endpoint - creating or editing agents, branch attachments, functions, actions (including writing their JavaScript/TypeScript scripts), ticket templates, mail templates, or secrets, or reading conversations - via the fertigai_* tools. Detailed per-domain guides are bundled under references/.
+description: Use when managing a fertig.ai workspace through its MCP endpoint - creating or editing agents, branch attachments, functions, actions (including writing their JavaScript/TypeScript scripts), ticket templates, mail templates, or secrets, reading conversations, or checking SIP trunk health - via the fertigai_* tools. Detailed per-domain guides are bundled under references/.
 ---
 
 # fertig.ai Workspace MCP (fertigai_*)
 
 ## Overview
-The workspace MCP exposes your fertig.ai workspace configuration as MCP tools, all named `fertigai_*`. Point an MCP client at your workspace endpoint, authenticate with a workspace API key, and the tools let you manage agents and their configuration and attachments, automation (functions and actions), ticket and mail templates, and secrets, and read conversation history. Every tool respects the API key's role permissions.
+The workspace MCP exposes your fertig.ai workspace configuration as MCP tools, all named `fertigai_*`. Point an MCP client at your workspace endpoint, authenticate with a workspace API key, and the tools let you manage agents and their configuration and attachments, automation (functions and actions), ticket and mail templates, and secrets, read conversation history, and check SIP trunk health. Every tool respects the API key's role permissions.
 
 ## Start with `fertigai_whoami`
 Call `fertigai_whoami` FIRST, before any other tool, on every new connection. It takes no arguments and tells you how to call every other tool correctly:
@@ -53,6 +53,7 @@ Call `fertigai_whoami` right after connecting to confirm which kind you have (it
 | Mail templates | mail_templates_list/get/create/update/delete | references/mail-templates.md |
 | Secrets | secrets_list/create/update/delete | references/secrets.md |
 | Conversations (read only) | conversations_list/get | references/conversations.md |
+| SIP trunks (read only) | sip_trunks_health | references/sip-trunks.md |
 
 Before using a domain's tools, READ its reference file (path relative to this skill) for field details, workflows, and gotchas. `references/scripting.md` covers the JavaScript/TypeScript environment shared by functions and actions (the `run(ctx)` contract, built-in primitives like `mail.send` and `llm.send`, sandbox limits). `fertigai_whoami` is workspace-agnostic (no `workspace` argument, documented above); every other tool listed here is workspace-scoped (see Conventions below). If a reference file is missing locally, fetch the latest from `https://cdn.fertig.ai/skills/fertigai-mcp/references/<name>.md` (this file: `https://cdn.fertig.ai/skills/fertigai-mcp/SKILL.md`).
 
@@ -60,7 +61,7 @@ Before using a domain's tools, READ its reference file (path relative to this sk
 - **`workspace` targeting**: every tool except `fertigai_whoami` accepts an optional `workspace` argument (a workspace slug). On a per-workspace connection it's ignored, the connection is already scoped. On an org-wide connection it's REQUIRED: pass a slug from `fertigai_whoami`'s `workspaces[]`. Never guess a slug; use only a slug that `fertigai_whoami` (or a `list` tool) returned.
 - **Public IDs** are prefixed and opaque: agents `agt_`, functions `fn_`, actions `act_`, secrets `sec_`, mail templates `mtpl_`, and similar. Always pass an id that a `list` or `get` returned; never invent one.
 - **Pagination**: list tools accept `cursor` and `page_size` (1 to 100, default 20). Responses look like `{ "data": [...], "pagination": { "next": "<cursor|null>", "has_more": bool } }`. To page, pass the previous response's `next` as `cursor`.
-- **Permissions and licenses**: writes need the matching role permission (agent config needs Agents-Edit; branch attachments, functions, actions, mail templates, and secrets need Integrations-Manage; ticket templates need Tickets-Manage plus the ticketing product). Reads need the view permission. A call without permission returns `isError: true` with text like `403: forbidden`.
+- **Permissions and licenses**: writes need the matching role permission (agent config needs Agents-Edit; branch attachments, functions, actions, mail templates, and secrets need Integrations-Manage; ticket templates need Tickets-Manage plus the ticketing product). Reads need the view permission (SIP trunk health needs Telephony-View). A call without permission returns `isError: true` with text like `403: forbidden`.
 - **Errors**: a failed call returns `isError: true` and a message like `404: agent not found` or `422: <validation detail>`. Read the status and detail, fix the arguments, and retry.
 - **Nested JSON fields** (agent config, function/action parameter schema, ticket fields and statuses, mail variables) are passed as JSON exactly as the matching `get` returns them. The safe pattern for any edit is: get, modify, send back.
 
