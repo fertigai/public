@@ -11,7 +11,7 @@ Shared conventions (ids, errors, permissions) are in the skill index (SKILL.md).
 | `fertigai_sip_trunks_health` | `id?` |
 
 - With `id` (a SIP trunk's `st_` id), the tool returns that trunk's verdict object.
-- Without `id`, it returns a JSON array of verdict objects, one per trunk in the workspace (the first 100 trunks). The tool takes no `cursor`: a workspace with more than 100 trunks reports only the first 100. A trunk deleted while the check runs is left out of the array.
+- Without `id`, it returns an array of verdicts for the workspace's trunks (the first 100; there is no `cursor`).
 
 Each verdict has these fields:
 
@@ -23,25 +23,18 @@ Each verdict has these fields:
 | `registration_status_at` | When the registration state was last reported, as an RFC 3339 timestamp. Empty when it was never reported. |
 
 ## Status vocabulary
-`status` is derived from whether the trunk is enabled and from `registration_status`:
+A disabled trunk reports `DISABLED` whatever its registration state and carries no calls until it is enabled again. For an enabled trunk, `status` follows `registration_status`:
 
-| `status` | When | What it means for the user |
+| `registration_status` | `status` | Meaning |
 |---|---|---|
-| `DISABLED` | The trunk is switched off in the portal, whatever its registration state. | The trunk carries no calls until it is enabled again. |
-| `HEALTHY` | `registration_status` is `REGISTERED`. | The registration is current; the trunk can carry calls. |
-| `UNHEALTHY` | `registration_status` is `FAILED`, `STALE` or `UNREGISTERED`. | The trunk is not registered; calls over it are likely to fail. Check the trunk's registration settings in the portal and on the carrier or PBX side. |
-| `UNKNOWN` | `registration_status` is `STATIC` or `UNKNOWN`. | Registration says nothing about this trunk's health (see below). |
+| `REGISTERED` | `HEALTHY` | The registration succeeded and has not expired; the trunk can carry calls. |
+| `STALE` | `UNHEALTHY` | The last successful registration expired without being renewed. |
+| `FAILED` | `UNHEALTHY` | The last registration attempt failed (this also covers a PBX that registers to the workspace). |
+| `UNREGISTERED` | `UNHEALTHY` | No live registration is reported. |
+| `STATIC` | `UNKNOWN` | The trunk authenticates by IP address and never registers, so registration says nothing about its health. This is not a fault. |
+| `UNKNOWN` | `UNKNOWN` | No registration state has been reported yet. |
 
-`registration_status` values:
-
-| Value | Meaning |
-|---|---|
-| `REGISTERED` | The registration succeeded and has not yet expired. |
-| `STALE` | The last registration was successful but has expired without being renewed. |
-| `FAILED` | The last registration attempt was refused or got no answer. |
-| `UNREGISTERED` | The trunk is not registered, for example after the registration was removed. |
-| `STATIC` | The trunk authenticates by IP address and never registers. |
-| `UNKNOWN` | No registration state has been reported yet, for example for a trunk created moments ago. |
+On `UNHEALTHY`, calls over the trunk are likely to fail: check its registration settings in the portal and on the carrier or PBX side.
 
 ## Example
 One trunk:
@@ -69,9 +62,7 @@ fertigai_sip_trunks_health {}
 ```
 
 ## Common mistakes
-- Reading `UNKNOWN` for an IP-authenticated trunk (`registration_status: "STATIC"`) as an error. Such a trunk never registers, so registration cannot tell whether it is healthy; it is not a fault.
-- Treating `STALE` as healthy because the trunk once registered. The registration has expired, so the verdict is `UNHEALTHY`.
-- Expecting the tool to create or revoke a health URL for an uptime monitor. It only reads verdicts; create health URLs on the SIP trunk in the portal.
+- Expecting the tool to create a health URL: it only reads health; the credential-free health URL for uptime monitors is created on the trunk in the portal.
 - Inventing a trunk id. Call the tool without `id` first and take an `st_` id from its result.
 
 Requires the Telephony-View permission.
