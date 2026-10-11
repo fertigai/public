@@ -24,7 +24,7 @@ Actions run after a conversation ends, once per attachment on the branch.
 | `fertigai_agent_actions_update` | `agent_id`, `branch_id`, `attached_action_id`, `parameter_values`, `label?`, `connection_bindings?` |
 | `fertigai_agent_actions_detach` | `agent_id`, `branch_id`, `attached_action_id` |
 
-`attached_action_id` is the `aba_...` id from the list or attach response. `update` is a full replacement: send every value you want kept. `parameter_values` uses the same four sources as function attachments (attachments.md). `connection_bindings` is `[{ "role", "connection_public_id" }]`, one entry per role the action (custom or integration) declares; every required role must be bound. Integration actions come from `fertigai_integration_actions_list` (integrations.md).
+`attached_action_id` is the `aba_...` id from the list or attach response. `update` is a full replacement: send every value you want kept. `parameter_values` is a plain object of typed values keyed by parameter name, for example `{ "display_name": "World" }`; there are no per-value sources (only function attachments use the four-source shape in attachments.md). `connection_bindings` is `[{ "role", "connection_public_id" }]`, one entry per role the action (custom or integration) declares; every required role must be bound. Integration actions come from `fertigai_integration_actions_list` (integrations.md).
 
 ## Fields
 - `style`: integer. `2` = Code (put the action logic in `script_source`), `1` = Visual (uses `pipeline`), `3` = HTTP (uses `http_request`, no `script_source`). For a code action use `style: 2` with a `script_source`.
