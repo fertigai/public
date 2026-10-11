@@ -64,7 +64,7 @@ Each key in `parameter_values` maps to a tagged object with exactly one source:
 - `Llm`: the model decides the value at call time. `description_override` is REQUIRED (non-empty): it is the description the model reads when choosing the value.
 - `Static`: a literal value sent on every call. `value` must match the parameter's declared type (string, number, boolean, or a nested object/array); a required string parameter needs a non-empty value.
 - `Secret`: resolved from a workspace secret (`sec_...`) at call time; the plaintext value never appears in the config. Required parameters need a non-empty `secret_public_id`.
-- `DynamicVariable`: resolved from a branch dynamic variable's current value at call time. `name` should be a variable declared in `config.dynamic_variables` (an undeclared name is not rejected, but the attachment is flagged stale and the value resolves empty).
+- `DynamicVariable`: resolved from a branch dynamic variable's current value at call time. If `name` is not declared in `config.dynamic_variables` yet, it is created on the branch when the attachment is saved, with no default value. A variable without a default value is fine: it resolves empty until the conversation sets it. Names the platform supplies itself (`caller_id`, `called_id`, and names starting with `system__` or `fertig__`) are never created. A name that differs only by case from a declared variable (`City` beside `city`) is rejected with `422`.
 
 ## assignments: writing a result into a variable
 ```json
