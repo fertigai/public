@@ -73,7 +73,7 @@ Result: `{ status, data }` with the upstream status and the response body, parse
 ## Stale usages
 An update may not break the places that use the function: agent and workflow attachments, ticket triggers that run it, and pending scheduled runs. If the new parameters or connection roles would leave any of them stale, nothing is saved and the tool returns a `409` error with one line per usage: why it no longer fits, and its `current_values`.
 
-- A usage whose only problem is a dynamic variable without a default on its agent branch does not block the update; set the default on the branch.
+- A usage whose only problem is a dynamic variable that its agent branch no longer declares does not block the update; declare the variable on the branch again or pick another source.
 - Mail hooks have no parameter values, so they are never stale.
 - Send the same update again with `usage_fixes`, one entry per listed usage. The update and every fix are saved together, or nothing is.
 - `id` is the usage's id. `parameter_values` are its full new values, in the shape of its `current_values` (omit to keep them). `connection_bindings` replaces its role bindings, `[{ "role", "connection_public_id" }]` (omit to keep them).
