@@ -1,7 +1,7 @@
 # Managing functions (fertigai_functions_*)
 
 ## Overview
-A **function** is a reusable custom tool (JavaScript) that an agent can call during a conversation. It has a name, a description (what the model sees), a parameter JSON Schema, and a `script` (or a `visual_graph` or an `http_request`). Functions can optionally declare connection roles for external credentials.
+A **function** is a reusable custom tool (JavaScript) that an agent can call during a conversation. It has a name, a description (what the model sees), a parameter schema, and a `script` (or a `visual_graph` or an `http_request`). Functions can optionally declare connection roles for external credentials.
 
 Functions generated from a workspace's external MCP servers are listed with `source: "mcp"`; ready-made integrations are a separate catalogue (integrations.md).
 
@@ -13,13 +13,13 @@ The script is an ES module with a `run(ctx)` export (TypeScript accepted), and t
 | `fertigai_functions_list` | `search?`, `source?` (`custom` default, `mcp`, `all`), `cursor?`, `page_size?` |
 | `fertigai_functions_get` | `id` |
 | `fertigai_functions_create` | `name`, `description`, `style`, `parameter_schema`, `script`, `connections?`, `visual_graph?`, `http_request?` |
-| `fertigai_functions_update` | `id`, `name`, `description`, `parameter_schema`, `script`, `connections?`, `visual_graph?`, `http_request?` |
+| `fertigai_functions_update` | `id`, `name`, `description`, `parameter_schema`, `script`, `connections?`, `visual_graph?`, `http_request?`, `usage_fixes?`, `dry_run?` |
 | `fertigai_functions_delete` | `id` |
 | `fertigai_functions_test` | `script?`, `parameter_schema`, `parameter_values`, `ctx_params?`, `function_id?`, `connection_bindings?`, `visual_graph?`, `http_request?` |
 
 ## Fields
 - `style`: integer. `1` = Script (a JavaScript function, the common case), `2` = Visual (the drag-and-drop builder, which uses `visual_graph` instead of `script`), `3` = HTTP (one HTTP request; `http_request` instead of `script`, see HTTP functions below).
-- `parameter_schema`: a JSON Schema object describing the arguments the agent must supply. Send at least `{ "type": "object", "properties": {} }`.
+- `parameter_schema`: the arguments the agent must supply, `{ "parameters": [{ "key", "description", "type", "required" }] }`. `key` is lowercase letters, digits and underscores, starting with a letter, max 32 characters. `type` is an integer: `1` string, `2` boolean, `3` integer, `4` number, `5` object (nested `properties`, a list of parameters), `6` array (`item_schema`, one parameter). `enum_values` restricts a string or integer. Send `{ "parameters": [] }` when the function takes no arguments.
 - `script`: the JavaScript module (see the return contract below).
 - `connections`: the connection roles the script reads, `[{ "role", "slug", "required" }]`, at most 8. `role` is lowercase letters, digits and underscores, max 32 characters; `slug` is a connection type from the workspace's connection catalogue; a non-empty list must contain a required `default` role. The script reads `ctx.connections[role]`, and `ctx.connection` is the `default` role. Omit it or send `[]` when the function needs no connection. Responses return `connections` in the catalogue entry shape, with the `connected` candidates for each role (integrations.md).
 - `style` is immutable, so `update` does not take it.
@@ -70,17 +70,42 @@ Result: `{ status, data }` with the upstream status and the response body, parse
 ## Test before you save
 `fertigai_functions_test` runs a draft (without saving) and returns the outcome and logs. Always test a new or changed `script` (or `visual_graph`, `http_request`) before `create` or `update`. `script` is optional when `http_request` is set.
 
+## Stale usages
+An update may not break the places that use the function: agent and workflow attachments, ticket triggers that run it, and pending scheduled runs. If the new parameters or connection roles would leave any of them stale, nothing is saved and the tool returns a `409` error with one line per usage: why it no longer fits, and its `current_values`.
+
+- A usage whose only problem is a dynamic variable without a default on its agent branch does not block the update; set the default on the branch.
+- Send the same update again with `usage_fixes`, one entry per listed usage. The update and every fix are saved together, or nothing is.
+- `id` is the usage's id. `parameter_values` are its full new values, in the shape of its `current_values` (omit to keep them). `connection_bindings` replaces its role bindings, `[{ "role", "connection_public_id" }]` (omit to keep them).
+- An agent or workflow attachment (`afn_...`) takes `parameter_values` in the four-source shape (attachments.md).
+- A ticket trigger (`trg_...`) also needs its `action_index`, and its values are the trigger's inputs, which may use ticket placeholders such as `{{title}}` or `{{custom.<field>}}`. Fixing a trigger needs Tickets-Manage and the ticketing product; without them the trigger is listed with only its id, index and reason.
+- A scheduled run (`sfn_...`) can only be cancelled: `{ "id": "sfn_...", "cancel": true }`.
+- A fix for an id that is not a usage of this function fails with `422`.
+- `dry_run: true` runs the same checks and fixes without saving anything: the answer is what a real update would answer.
+
+```
+fertigai_functions_update {
+  "id": "fn_...", "name": "Customer Lookup", "description": "Find a customer by id.",
+  "parameter_schema": { "parameters": [{ "key": "customer_id", "description": "The customer's id", "type": 1, "required": true }] },
+  "script": "export async function run(ctx) {\n  return { status: 200, data: { id: ctx.params.customer_id } }\n}",
+  "usage_fixes": [
+    { "id": "afn_...", "parameter_values": { "customer_id": { "source": { "Llm": { "description_override": "The customer's id" } } } } },
+    { "id": "trg_...", "action_index": 0, "parameter_values": { "customer_id": "{{custom.customer_id}}" } },
+    { "id": "sfn_...", "cancel": true }
+  ]
+}
+```
+
 ## Example
 ```
 fertigai_functions_create {
   "name": "Coin Flip", "description": "Flip a coin and return heads or tails.",
-  "style": 1, "parameter_schema": { "type": "object", "properties": {} },
+  "style": 1, "parameter_schema": { "parameters": [] },
   "script": "export async function run(ctx) {\n  const result = Math.random() < 0.5 ? 'heads' : 'tails'\n  return { status: 200, data: { result } }\n}"
 }
 fertigai_functions_create {
   "name": "Order Status", "description": "Look up an order's status by its number.",
   "style": 3,
-  "parameter_schema": { "type": "object", "properties": { "order_number": { "type": "string" } }, "required": ["order_number"] },
+  "parameter_schema": { "parameters": [{ "key": "order_number", "description": "The order number", "type": 1, "required": true }] },
   "http_request": { "method": 1, "url": "https://shop.example.com/api/orders/{{params.order_number}}",
     "query": [], "headers": [], "auth": { "kind": 2, "token": "{{secrets.SHOP_API_TOKEN}}" },
     "body": { "kind": 1, "content": "" }, "version": 1 }
@@ -94,6 +119,7 @@ fertigai_functions_create {
 - Passing `style` to `update`: it is immutable; omit it.
 - An unquoted placeholder in a JSON body (`"n": {{params.n}}`): rejected with `422`. Quote it (`"n": "{{params.n}}"`); a whole-string placeholder keeps the value's type.
 - Sending `script` together with `http_request`: ignored on functions, rejected on actions; send only `http_request`.
+- Re-sending an update after a `409` without `usage_fixes`: it is refused again. Add one entry per listed usage, or use `dry_run` to try first.
 - Expecting a "run this function now" tool over MCP: there is none. Functions are invoked by agents at runtime; use `fertigai_functions_test` for dry runs.
 
 Writes need Integrations-Manage.
