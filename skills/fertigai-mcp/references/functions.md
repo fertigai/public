@@ -78,7 +78,7 @@ An update may not break the places that use the function: agent and workflow att
 - Send the same update again with `usage_fixes`, one entry per listed usage. The update and every fix are saved together, or nothing is.
 - `id` is the usage's id. `parameter_values` are its full new values, in the shape of its `current_values` (omit to keep them). `connection_bindings` replaces its role bindings, `[{ "role", "connection_public_id" }]` (omit to keep them).
 - An agent or workflow attachment (`afn_...`) takes `parameter_values` in the four-source shape (attachments.md).
-- A ticket trigger (`trg_...`) also needs its `action_index`, and its values are the trigger's inputs, which may use ticket placeholders such as `{{title}}` or `{{custom.<field>}}`. Fixing a trigger needs Tickets-Manage and the ticketing product; without them the trigger is listed with only its id, index and reason.
+- A ticket trigger (`trg_...`) also needs its `action_index`, and its values are the trigger's inputs, which may use ticket placeholders such as `{{title}}` or `{{custom.<field>}}`. Without access to the ticketing product, the trigger is listed with only its id, index and reason. Fixing it also needs Tickets-Manage: with the product but without Tickets-Manage you see its name and values, but its fix fails with `403`.
 - A scheduled run (`sfn_...`) can only be cancelled: `{ "id": "sfn_...", "cancel": true }`.
 - A fix for an id that is not a usage of this function fails with `422`.
 - `dry_run: true` runs the same checks and fixes without saving anything: the answer is what a real update would answer.
