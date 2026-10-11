@@ -11,7 +11,7 @@ Code actions are an ES module with a `run(ctx)` export (TypeScript accepted). Th
 | `fertigai_actions_list` | `search?`, `cursor?`, `page_size?` |
 | `fertigai_actions_get` | `id` |
 | `fertigai_actions_create` | `name`, `description`, `style`, `script_source?`, `pipeline?`, `http_request?`, `parameter_schema?`, `connections?` |
-| `fertigai_actions_update` | `id`, `name`, `description`, `style`, `script_source?`, `pipeline?`, `http_request?`, `parameter_schema?`, `connections?` |
+| `fertigai_actions_update` | `id`, `name`, `description`, `style`, `script_source?`, `pipeline?`, `http_request?`, `parameter_schema?`, `connections?`, `usage_fixes?`, `dry_run?` |
 | `fertigai_actions_delete` | `id` |
 | `fertigai_actions_test` | `script?`, `parameter_schema?`, `parameter_values?`, `ctx_params?`, one of `conversation_public_id` or `script_ctx`, `action_id?`, `connection_bindings?`, `http_request?` |
 
@@ -24,7 +24,7 @@ Actions run after a conversation ends, once per attachment on the branch.
 | `fertigai_agent_actions_update` | `agent_id`, `branch_id`, `attached_action_id`, `parameter_values`, `label?`, `connection_bindings?` |
 | `fertigai_agent_actions_detach` | `agent_id`, `branch_id`, `attached_action_id` |
 
-`attached_action_id` is the `aba_...` id from the list or attach response. `update` is a full replacement: send every value you want kept. `parameter_values` uses the same four sources as function attachments (attachments.md). `connection_bindings` is `[{ "role", "connection_public_id" }]`, one entry per role the action (custom or integration) declares; every required role must be bound. Integration actions come from `fertigai_integration_actions_list` (integrations.md).
+`attached_action_id` is the `aba_...` id from the list or attach response. `update` is a full replacement: send every value you want kept. `parameter_values` is a plain object of typed values keyed by parameter name, for example `{ "display_name": "World" }`; there are no per-value sources (only function attachments use the four-source shape in attachments.md). `connection_bindings` is `[{ "role", "connection_public_id" }]`, one entry per role the action (custom or integration) declares; every required role must be bound. Integration actions come from `fertigai_integration_actions_list` (integrations.md).
 
 ## Fields
 - `style`: integer. `2` = Code (put the action logic in `script_source`), `1` = Visual (uses `pipeline`), `3` = HTTP (uses `http_request`, no `script_source`). For a code action use `style: 2` with a `script_source`.
@@ -63,6 +63,18 @@ Unlike a function, an action's return value is stored verbatim as the execution 
 
 ## Test before saving
 `fertigai_actions_test` dry-runs a draft. It needs a context source: pass either a real `conversation_public_id` to run against a past conversation, or a `script_ctx` object with mock context. Provide exactly one of them, not both.
+
+## Stale attachments
+An update may not break the branches the action is attached to. If the new parameters or connection roles would leave an attachment stale, nothing is saved and the tool returns a `409` error with one line per attachment: why it no longer fits, and its `current_values`. Send the same update again with `usage_fixes`, one `{ "id": "aba_...", "parameter_values": { ... } }` per attachment: its full new values in the shape of its `current_values` (omit to keep them), plus `connection_bindings` to replace its role bindings (omit to keep them). The update and every fix are saved together, or nothing is. `dry_run: true` runs the same checks and fixes without saving anything.
+
+```
+fertigai_actions_update {
+  "id": "act_...", "name": "Greeter", "description": "", "style": 2,
+  "script_source": "export async function run(ctx) {\n  return { ok: true }\n}",
+  "parameter_schema": { "parameters": [{ "key": "display_name", "description": "Name to greet", "type": 1, "required": true }] },
+  "usage_fixes": [{ "id": "aba_...", "parameter_values": { "display_name": "World" } }]
+}
+```
 
 ## Common mistakes
 - Sending `preset_key` on create.
