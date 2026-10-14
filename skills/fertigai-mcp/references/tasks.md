@@ -1,7 +1,7 @@
 # Managing tasks (fertigai_task_*, fertigai_tasks_*)
 
 ## Overview
-**Tasks** are the workspace's work items: support requests, call-backs, follow-ups. Each task belongs to a **task type**, which defines its workflow (statuses) and its form (fields picked from the workspace **field library**). **Labels** are shared across types, and **task triggers** automate changes when tasks are created, updated, or sit too long.
+**Tasks** are the workspace's work items: support requests, call-backs, follow-ups. Each task belongs to a **task type**, which defines its workflow (statuses) and its form (fields picked from the workspace **field library**). Every workspace also has one built-in type, "No type" (key `TASK`, or `TASK2` when a type already used `TASK`): tasks created without a type land in it. It is always open, has no fields and cannot be archived; its name, description and statuses can be edited. **Labels** are shared across types, and **task triggers** automate changes when tasks are created, updated, or sit too long.
 
 Shared conventions (ids, pagination, errors, permissions) are in the skill index (SKILL.md). Every tool here also takes an optional `workspace` slug, required only when the connection is org-wide (see SKILL.md / `fertigai_whoami`).
 
@@ -82,7 +82,7 @@ Shared conventions (ids, pagination, errors, permissions) are in the skill index
   "source": "PHONE"
 }
 ```
-Only `type_id` (a `tty_...` id or a type key) and `title` are required. `status_id` defaults to the type's default status and `priority` to `NONE`. Use `requester_user_id` instead of `requester_contact_id` for a workspace member as requester; send at most one of the two. `parent` takes a task id or key.
+Only `title` is required. Without `type_id` (a `tty_...` id or a type key) the task lands in the built-in type. `status_id` defaults to the type's default status and `priority` to `NONE`. Use `requester_user_id` instead of `requester_contact_id` for a workspace member as requester; send at most one of the two. `parent` takes a task id or key.
 
 `fertigai_tasks_update` body (a partial update):
 ```json
