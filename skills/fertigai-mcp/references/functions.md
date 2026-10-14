@@ -5,7 +5,7 @@ A **function** is a reusable custom tool (JavaScript) that an agent can call dur
 
 Functions generated from a workspace's external MCP servers are listed with `source: "mcp"`; ready-made integrations are a separate catalogue (integrations.md).
 
-The script is an ES module with a `run(ctx)` export (TypeScript accepted), and the full built-in primitive set (`mail`, `llm`, `http`, `time`, `objects`, `secrets`, `functions.invoke`, `tickets`, ...), the runtime, and the sandbox limits are documented in the scripting reference (scripting.md). Shared MCP conventions (ids, pagination, errors, permissions) are in the skill index (SKILL.md). Every tool here also takes an optional `workspace` slug, required only when the connection is org-wide (see SKILL.md / `fertigai_whoami`).
+The script is an ES module with a `run(ctx)` export (TypeScript accepted), and the full built-in primitive set (`mail`, `llm`, `http`, `time`, `objects`, `secrets`, `functions.invoke`, `tasks`, ...), the runtime, and the sandbox limits are documented in the scripting reference (scripting.md). Shared MCP conventions (ids, pagination, errors, permissions) are in the skill index (SKILL.md). Every tool here also takes an optional `workspace` slug, required only when the connection is org-wide (see SKILL.md / `fertigai_whoami`).
 
 ## Tools
 | Tool | Args |
@@ -28,12 +28,12 @@ The script is an ES module with a `run(ctx)` export (TypeScript accepted), and t
 A function's `ctx` is param-centric:
 ```
 { params: { /* the typed arguments, matching parameter_schema */ },
-  event: { type: "agent-invocation" | "mailhook" | "ticket-trigger" | "manual-test" | "function-call", ... },
+  event: { type: "agent-invocation" | "mailhook" | "task-trigger" | "manual-test" | "function-call", ... },
   connection?: { /* the default role's credentials */ }, connections?: { [role]: { /* credentials */ } },
   conversation_id?: "conv_...",   // present when an agent calls it mid-call
   agent_id?: "agt_..." }
 ```
-It has NO transcript or conversation history (that is the action `ctx`; see actions.md). Mail-hook runs additionally receive `ctx.mail` (the inbound message) and ticket-trigger runs receive `ctx.ticket`. `ctx.event` carries the trigger detail (see scripting.md).
+It has NO transcript or conversation history (that is the action `ctx`; see actions.md). Mail-hook runs additionally receive `ctx.mail` (the inbound message) and task-trigger runs receive `ctx.task`: `{ id, key, number, type_id, title, status_id, status_category, priority, source, tags, label_ids }`. They also receive `ctx.ticket`, a legacy view of the same task for scripts written for ticket triggers (`priority` reads `"normal"` for `NONE` and `MEDIUM`, and the source is `channel`); new scripts read `ctx.task`. `ctx.event` carries the trigger detail (see scripting.md).
 
 ## The return contract (strict)
 A function MUST return `{ status: <integer 100-599>, data: <any JSON> }`. `status` becomes the HTTP status the caller or agent sees; `data` becomes the raw JSON response body (no wrapping envelope). Returning any other shape fails as `502 function-invalid-return-shape`. A thrown error surfaces as `500`, a timeout as `504`.
@@ -71,14 +71,14 @@ Result: `{ status, data }` with the upstream status and the response body, parse
 `fertigai_functions_test` runs a draft (without saving) and returns the outcome and logs. Always test a new or changed `script` (or `visual_graph`, `http_request`) before `create` or `update`. `script` is optional when `http_request` is set.
 
 ## Stale usages
-An update may not break the places that use the function: agent and workflow attachments, ticket triggers that run it, and pending scheduled runs. If the new parameters or connection roles would leave any of them stale, nothing is saved and the tool returns a `409` error with one line per usage: why it no longer fits, and its `current_values`.
+An update may not break the places that use the function: agent and workflow attachments, task triggers that run it, and pending scheduled runs. If the new parameters or connection roles would leave any of them stale, nothing is saved and the tool returns a `409` error with one line per usage: why it no longer fits, and its `current_values`.
 
 - A usage whose only problem is a dynamic variable that its agent branch no longer declares does not block the update; declare the variable on the branch again or pick another source.
 - Mail hooks have no parameter values, so they are never stale.
 - Send the same update again with `usage_fixes`, one entry per listed usage. The update and every fix are saved together, or nothing is.
 - `id` is the usage's id. `parameter_values` are its full new values, in the shape of its `current_values` (omit to keep them). `connection_bindings` replaces its role bindings, `[{ "role", "connection_public_id" }]` (omit to keep them).
 - An agent or workflow attachment (`afn_...`) takes `parameter_values` in the four-source shape (attachments.md).
-- A ticket trigger (`trg_...`) also needs its `action_index`, and its values are the trigger's inputs, which may use ticket placeholders such as `{{title}}` or `{{custom.<field>}}`. Without access to the ticketing product, the trigger is listed with only its id, index and reason. Fixing it also needs Tickets-Manage: with the product but without Tickets-Manage you see its name and values, but its fix fails with `403`.
+- A task trigger (`trg_...`) also needs its `action_index`, and its values are the trigger's inputs, which may use task placeholders such as `{{title}}` or `{{custom.<field>}}` (tasks.md). Without access to the Tasks product, the trigger is listed with only its id, index and reason. Fixing it also needs Tasks-Manage: with the product but without Tasks-Manage you see its name and values, but its fix fails with `403`.
 - A scheduled run (`sfn_...`) can only be cancelled: `{ "id": "sfn_...", "cancel": true }`.
 - A fix for an id that is not a usage of this function fails with `422`.
 - `dry_run: true` runs the same checks and fixes without saving anything: the answer is what a real update would answer.
