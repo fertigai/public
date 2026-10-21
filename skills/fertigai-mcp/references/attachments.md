@@ -42,13 +42,14 @@ Reading and re-sending both is the safe default. Because each section is a full 
 | Field | Type | Notes |
 |---|---|---|
 | `function_id` | string | the function's public id (`fn_...`), for a user-defined function |
-| `system_tool_type` | string | one of the built-in tool slugs from `fertigai_system_tools_list`: currently `end_call`, `language_detection`, `transfer_to_number`. Exactly one of `function_id`, `system_tool_type`, `integration_key` must be set |
+| `system_tool_type` | string | one of the built-in tool slugs from `fertigai_system_tools_list`: currently `end_call`, `language_detection`, `transfer_to_number`, `transfer_to_agent`. Exactly one of `function_id`, `system_tool_type`, `integration_key` must be set |
 | `integration_key` | string | the catalogue key of an integration function (integrations.md) |
 | `label` | string | integration attachments only: shown instead of the catalogue name, max 80 chars |
 | `connection_bindings` | array | `[{ role, connection_public_id }]`, one per connection role the function or integration declares; required roles must be bound |
 | `parameter_values` | object | keyed by the function's parameter key, see below. Empty for system tools other than `transfer_to_number` |
 | `assignments` | array | response-to-variable assignments, see below |
 | `transfer_type`, `number_source`, `transfer_dynamic_variable`, `transfer_prompt`, `transfer_timeout_secs`, `transfer_routes` | | only for the `transfer_to_number` system tool, see below |
+| `agent_transfer_targets` | array | only for the `transfer_to_agent` system tool, see below |
 
 ## parameter_values: the four sources
 Each key in `parameter_values` maps to a tagged object with exactly one source:
@@ -76,7 +77,7 @@ Each assignment extracts a value from the function's JSON result using a dot-not
 
 - Each `dynamic_variable` must match `^[a-zA-Z_][a-zA-Z0-9_]*$`, be unique within that attachment's assignments, and must not start with `system__` in any casing (`SYSTEM__x` and `System__x` are reserved too); `value_path` must be non-empty. Otherwise the call is rejected.
 - A target becomes a declared variable, so no two targets anywhere in the call may differ only by case (the uniqueness check above is per attachment and exact, so such a pair passes it and fails on the merged list), and no target may differ only by case from a variable the branch already declares: an assignment targeting `City` beside `city` is a `422`.
-- `assignments` apply only to user-defined functions. A system tool (`system_tool_type`) ignores them, so do not put assignments on `end_call`, `language_detection`, or `transfer_to_number`; they are not applied at call time, but their targets still count for the naming rules above.
+- `assignments` apply only to user-defined functions. A system tool (`system_tool_type`) ignores them, so do not put assignments on `end_call`, `language_detection`, `transfer_to_number`, or `transfer_to_agent`; they are not applied at call time, but their targets still count for the naming rules above.
 
 ## Transfer settings: transfer_to_number only
 A `transfer_to_number` entry carries its transfer settings at the attachment level:
@@ -118,6 +119,27 @@ Whichever source supplies it, a number is cleaned before dialling: spaces (ordin
 - National numbers (`030 1234`) and internal extensions (`23`) are fine. A number with a leading zero is dialled as written; a bare international number (7 to 15 digits, no leading zero) gets its `+`.
 - The `(0)` notation is not understood, and it is not an error either: `+49 (0)30 1234` becomes `+490301234` and dials a number nobody answers. Write `+49 30 1234`.
 - Letters are never allowed, and a percent-escaped character (`%23` for `#`) is refused rather than decoded.
+
+## Transfer to agent: transfer_to_agent only
+A `transfer_to_agent` entry hands the call to a branch of an agent in the same workspace when a condition applies. It works like the `agent_transfer` workflow node (see agents-workflow.md), for agents without a workflow:
+```json
+{ "system_tool_type": "transfer_to_agent",
+  "agent_transfer_targets": [
+    { "agent_id": "agt_...", "branch_id": "br_...",
+      "condition": "The caller wants to book, move or cancel an appointment.",
+      "transfer_message": "One moment, I am connecting you to our appointment desk.",
+      "play_welcome_message": false, "delay_ms": 0 }
+  ] }
+```
+- At least one target. Each `branch_id` must be a branch of that `agent_id` in this workspace. Unlike the node, a target may also be the branch being configured itself.
+- `condition` is required and must not be empty after trimming: the agent hands the call to the target whose condition applies.
+- `transfer_message` is spoken before the handover (at most 500 characters after trimming, empty = none); `play_welcome_message` (default `false`) lets the target agent open with its own welcome message; `delay_ms` is a whole number from 0 to 10000 (default 0).
+- A target that breaks one of these rules is rejected with `422` naming it by position (counted from 1), for example `transfer_to_agent target 2 field 'condition' must not be empty`. An empty list is rejected with `transfer_to_agent needs at least one target`.
+- Branch level only: put it in `functions.branch`. Under `functions.nodes` it is rejected with `422`; inside a workflow use the `agent_transfer` node instead.
+- A target branch must have been saved (synced) at least once before this branch is saved, otherwise this branch's sync fails and names the target.
+- Deleting a branch that a target points at, or that branch's agent, is refused with `409` (see agents.md).
+
+These fields only apply to a `transfer_to_agent` entry; other attachments leave `agent_transfer_targets` empty.
 
 ## Function nodes need a matching attachment
 A workflow `function` node runs exactly one attached function. If a branch's `config.workflow` has a `function` node, the same `fertigai_agent_branch_configure` call MUST include a matching entry under `attachments.functions.nodes["<that node's id>"]`, or the whole call is rejected. Set the workflow and its function-node attachments together in one call.
