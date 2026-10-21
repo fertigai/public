@@ -134,7 +134,7 @@ A `transfer_to_agent` entry hands the call to a branch of an agent in the same w
 - At least one target. Each `branch_id` must be a branch of that `agent_id` in this workspace. Unlike the node, a target may also be the branch being configured itself.
 - `condition` is required and must not be empty after trimming: the agent hands the call to the target whose condition applies.
 - `transfer_message` is spoken before the handover (at most 500 characters after trimming, empty = none); `play_welcome_message` (default `false`) lets the target agent open with its own welcome message; `delay_ms` is a whole number from 0 to 10000 (default 0).
-- A target that breaks one of these rules is rejected with `422` naming it by position (counted from 1), for example `transfer_to_agent target 2 field 'condition' must not be empty`. An empty list is rejected with `transfer_to_agent needs at least one target`.
+- A target that breaks one of these rules is rejected with `422` naming it by position (counted from 1), for example `transfer_to_agent target 2 field 'condition' must not be empty`. An empty list is rejected with `transfer_to_agent field 'agent_transfer_targets' needs at least one target`. Sending `agent_transfer_targets` on any other attachment is rejected with `422` too.
 - Branch level only: put it in `functions.branch`. Under `functions.nodes` it is rejected with `422`; inside a workflow use the `agent_transfer` node instead.
 - A target branch must have been saved (synced) at least once before this branch is saved, otherwise this branch's sync fails and names the target.
 - Deleting a branch that a target points at, or that branch's agent, is refused with `409` (see agents.md).
