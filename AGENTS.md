@@ -25,10 +25,9 @@ CI runs only the secret scan (see below). Before pushing:
 
 ## Updates and security
 
-- Renovate (`renovate.json`, preset in `fertigai/ci`) opens update PRs; patch and minor updates auto-merge once CI is green, majors wait for the owner.
-- `security.yml` (inline, as a public repo cannot call the private `fertigai/ci` workflow) blocks PRs that add a leaked secret. Markdown only, so there is no dependency or image scan.
-- Acknowledging a finding follows the `fertigai/ci` README: at most 14 days, the owner decides.
-- The nightly security report goes to the security Discord channel.
+- Renovate (`renovate.json`, shared preset) opens update PRs; patch/minor merge automatically once CI passes.
+- `security.yml` runs a secret scan on every PR and blocks a PR that adds a leaked secret.
+- Acknowledging a finding: at most 14 days; the owner decides.
 
 ## Rules
 

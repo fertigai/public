@@ -1,4 +1,4 @@
-# Mirrors fertigai/ci actions (source of truth); Renovate keeps the digests in sync.
+# Mirrors the shared CI scan actions; Renovate keeps the digests in sync.
 name: Security
 on: { pull_request: null, push: { branches: [main] }, workflow_dispatch: null } # dispatch scans the full history
 permissions: { contents: read }
