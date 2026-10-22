@@ -1,0 +1,5 @@
+/.github/workflows/security.yml @yzaimoglu
+/renovate.json @yzaimoglu
+/.trivyignore.yaml @yzaimoglu
+/trivy.yaml @yzaimoglu
+/.gitleaks.toml @yzaimoglu

@@ -1,6 +1,6 @@
 # public - agent guide
 
-Public Agent Skills for driving a fertig.ai workspace through its MCP server. Markdown only: no build, no CI, no deploy. Everything here is read by customers.
+Public Agent Skills for driving a fertig.ai workspace through its MCP server. Markdown only: no build, no deploy; CI runs only the secret scan. Everything here is read by customers.
 
 ## Layout
 
@@ -17,11 +17,18 @@ Public Agent Skills for driving a fertig.ai workspace through its MCP server. Ma
 
 ## Validate
 
-No automated checks. Before pushing:
+CI runs only the secret scan (see below). Before pushing:
 
 - Every file under `references/` is named in `SKILL.md`: `for f in skills/fertigai-mcp/references/*.md; do grep -q "$(basename "$f")" skills/fertigai-mcp/SKILL.md || echo "missing: $f"; done` prints nothing.
 - Every `fertigai_*` name you wrote matches a real tool, and examples (JSON, JavaScript) are valid.
 - Read the diff once as a customer would: nothing internal, nothing that only makes sense inside the company.
+
+## Updates and security
+
+- Renovate (`renovate.json`, preset in `fertigai/ci`) opens update PRs; patch and minor updates auto-merge once CI is green, majors wait for the owner.
+- `security.yml` (inline, as a public repo cannot call the private `fertigai/ci` workflow) blocks PRs that add a leaked secret. Markdown only, so there is no dependency or image scan.
+- Acknowledging a finding follows the `fertigai/ci` README: at most 14 days, the owner decides.
+- The nightly security report goes to the security Discord channel.
 
 ## Rules
 

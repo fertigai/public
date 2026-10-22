@@ -1,0 +1,19 @@
+# Mirrors fertigai/ci actions (source of truth); Renovate keeps the digests in sync.
+name: Security
+on: { pull_request: null, push: { branches: [main] }, workflow_dispatch: null } # dispatch scans the full history
+permissions: { contents: read }
+jobs:
+  scan: # Markdown only: no lockfiles or images, so only the secret scan runs
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { fetch-depth: 0, persist-credentials: false }
+      - name: secrets
+        env: { EVENT: "${{ github.event_name }}", BASE: "${{ github.event.pull_request.base.sha }}", HEAD: "${{ github.event.pull_request.head.sha }}", BEFORE: "${{ github.event.before }}" }
+        run: |
+          range=() # workflow_dispatch: full history
+          if [ "$EVENT" = pull_request ]; then range=(--log-opts="$BASE..$HEAD")
+          elif [ "$EVENT" = push ] && [ -n "${BEFORE//0/}" ] && git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then range=(--log-opts="$BEFORE..$GITHUB_SHA")
+          elif [ "$EVENT" = push ]; then range=(--log-opts="-1 $GITHUB_SHA"); fi # new branch, force push or all-zeros before
+          docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/repo:ro" "ghcr.io/gitleaks/gitleaks:v8.30.1@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f" \
+            git /repo --redact --no-banner --verbose "${range[@]}"
