@@ -13,7 +13,7 @@ One [Agent Skill](https://agentskills.io): `skills/fertigai-mcp`. Its `SKILL.md`
 | `functions.md` | Custom JavaScript function tools that agents can call during a conversation |
 | `actions.md` | Automations that run in response to a conversation (for example post-call steps) |
 | `scripting.md` | The shared JavaScript/TypeScript environment for functions and actions: `run(ctx)`, built-in primitives, limits |
-| `ticket-templates.md` | Support-ticket field and status schemas |
+| `tasks.md` | Tasks, task types, the field library, labels, and task triggers |
 | `mail-templates.md` | Reusable HTML email templates |
 | `secrets.md` | Workspace secrets (write-only) |
 | `conversations.md` | Reading and searching conversation history |
