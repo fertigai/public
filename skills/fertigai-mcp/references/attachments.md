@@ -9,7 +9,7 @@ An agent branch calls tools and reads knowledge during a conversation through **
 | `fertigai_agent_attachments_get` | `agent_id`, `branch_id` | current attachment state for the branch |
 | `fertigai_agent_branch_configure` | `agent_id`, `branch_id`, `config?`, `attachments?` | writes config and/or attachments in one call; `config` is documented in agents.md |
 | `fertigai_system_tools_list` | none | the built-in tools available as attachments |
-| `fertigai_knowledge_base_list` | `parent_id?`, `search?`, `cursor?`, `page_size?` | browse knowledge-base items to find their `kbi_...` ids |
+| `fertigai_knowledge_base_list` | `parent_id?`, `search?`, `cursor?`, `page_size?` | find knowledge-base items' `kbi_...` ids; without `parent_id` it lists every level (see knowledge-base.md) |
 
 ## The read-modify-write loop
 The `attachments` object is declarative and replaces its whole domain: whatever you send for `functions` becomes the entire function-attachment state, and whatever you send for `knowledge_bases` becomes the entire knowledge-base state. There is no partial merge, so anything you leave out is removed - and that includes a whole missing sub-section: an `attachments` object that carries only `knowledge_bases` detaches EVERY function (and vice versa). Always send both sub-sections.
@@ -166,7 +166,7 @@ These fields only apply to a `transfer_to_agent` entry; other attachments leave 
 A workflow `function` node runs exactly one attached function. If a branch's `config.workflow` has a `function` node, the same `fertigai_agent_branch_configure` call MUST include a matching entry under `attachments.functions.nodes["<that node's id>"]`, or the whole call is rejected. Set the workflow and its function-node attachments together in one call.
 
 ## Knowledge bases
-`fertigai_knowledge_base_list` browses the workspace's knowledge-base tree (folders and files) to find item ids: pass a folder's id as `parent_id` to look inside it, or `search` to filter by name. Each item's `id` (`kbi_...`) is what goes in `knowledge_bases.branch` or `knowledge_bases.nodes["<id>"].items`.
+`fertigai_knowledge_base_list` finds item ids in the workspace's knowledge-base tree (folders and files). Without `parent_id` it lists every item at every level; pass a folder's id as `parent_id` to see only its direct children, or `search` to filter by name. Each item's `id` (`kbi_...`), a folder or a file, is what goes in `knowledge_bases.branch` or `knowledge_bases.nodes["<id>"].items`. Creating folders, uploading, renaming, moving and deleting items is in knowledge-base.md.
 
 ## Example: attach a function to a workflow node
 Read current attachments:
