@@ -11,7 +11,7 @@ The building blocks:
 - **Call queues** (`cq_...`): cap how many callers pass a point in a flow at once.
 - **Audio prompts** (`aud_...`): WAV or MP3 files that flows and queues play.
 - **Schedules** (`sch_...`): opening hours, date exceptions and statutory holidays.
-- **SIP trunks** (`st_...`): the connection a number routes over. Trunks are read-only over MCP; see `references/sip-trunks.md`.
+- **SIP trunks** (`st_...`): the connection a number routes over. Creating, editing, testing and checking trunks is in `references/sip-trunks.md`.
 
 Buying a phone number from the platform pool is not available over MCP: buy numbers in the portal. Over MCP you can register numbers you already own on one of your SIP trunks, and route any number of the workspace.
 
