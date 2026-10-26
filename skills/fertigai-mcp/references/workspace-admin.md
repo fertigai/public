@@ -142,7 +142,7 @@ Changing the plan stays in the portal.
 - Products and licenses: Licenses-View. Billing plan and usage: Billing-View.
 - Chat models: the Chat product.
 
-The built-in Viewer role has Groups-View and Roles-View but not Team-View, Licenses-View or Billing-View; Editor adds Team-View. A call without the permission returns `isError: true` with `403: forbidden`.
+A call without the permission returns `isError: true` with `403: forbidden`.
 
 ## Common mistakes
 - Asking for a write: inviting, removing or re-roling a member, editing groups or roles, assigning licenses, or creating, rotating or revoking an API key. There is no tool; send the user to the portal.
