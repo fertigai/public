@@ -17,6 +17,7 @@ One [Agent Skill](https://agentskills.io): `skills/fertigai-mcp`. Its `SKILL.md`
 | `mail-templates.md` | Reusable HTML email templates |
 | `secrets.md` | Workspace secrets (write-only) |
 | `conversations.md` | Reading and searching conversation history |
+| `telephony.md` | Phone numbers and number blocks, routing them to agents or call flows, call flows, call queues, audio prompts, opening hours and holidays |
 | `sip-trunks.md` | Listing SIP trunks and checking whether one is registered or reachable, and healthy |
 
 ## Connecting to the MCP
