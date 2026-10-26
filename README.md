@@ -24,6 +24,7 @@ One [Agent Skill](https://agentskills.io): `skills/fertigai-mcp`. Its `SKILL.md`
 | `conversations.md` | Reading and searching conversation history, flagging conversations, their workflow route and action runs |
 | `telephony.md` | Phone numbers and number blocks, routing them to agents or call flows, call flows, call queues, audio prompts, opening hours and holidays |
 | `sip-trunks.md` | Creating, replacing and deleting SIP trunks from a provider template or by hand, placing test calls, and checking whether a trunk is registered or reachable, and healthy |
+| `workspace-admin.md` | Reading the workspace, members and pending invites, groups, roles and permissions, API key metadata, products and licenses, chat models, and billing plan and usage (read-only) |
 
 ## Connecting to the MCP
 
