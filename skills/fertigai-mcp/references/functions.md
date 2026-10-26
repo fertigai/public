@@ -3,7 +3,7 @@
 ## Overview
 A **function** is a reusable custom tool (JavaScript) that an agent can call during a conversation. It has a name, a description (what the model sees), a parameter schema, and a `script` (or a `visual_graph` or an `http_request`). Functions can optionally declare connection roles for external credentials.
 
-Functions generated from a workspace's external MCP servers are listed with `source: "mcp"`; ready-made integrations are a separate catalogue (integrations.md).
+Functions generated from a workspace's external MCP servers are listed with `source: "mcp"` (see MCP server functions below); ready-made integrations are a separate catalogue (integrations.md).
 
 The script is an ES module with a `run(ctx)` export (TypeScript accepted), and the full built-in primitive set (`mail`, `llm`, `http`, `time`, `objects`, `secrets`, `functions.invoke`, `tasks`, ...), the runtime, and the sandbox limits are documented in the scripting reference (scripting.md). Shared MCP conventions (ids, pagination, errors, permissions) are in the skill index (SKILL.md). Every tool here also takes an optional `workspace` slug, required only when the connection is org-wide (see SKILL.md / `fertigai_whoami`).
 
@@ -66,6 +66,15 @@ Spaces inside the braces are allowed (`{{ params.x }}`); segments are `[A-Za-z_]
 Encoding: placeholders in the URL and in query values are URL-encoded, except a `connection.*`, `connections.*` or `secrets.*` placeholder that starts the URL (a base URL such as `{{connection.base_url}}/tickets`), which is inserted as-is (any other placeholder there is rejected at save with an error on `url`); header, auth and text-body values are inserted as text (objects as JSON). A query row whose value resolves to the empty string is left out, so optional parameters stay optional. In a JSON body every placeholder must sit inside a JSON string; a string that is exactly one placeholder passes the value through with its type (numbers, booleans, objects, and an unset value drops the key), while mixed text is stringified. Placeholders are not allowed in JSON keys.
 
 Result: `{ status, data }` with the upstream status and the response body, parsed as JSON when it is JSON, else the raw text. A network failure returns `{ status: 502, data: { error } }`. An invalid definition fails `create`/`update` with 422 `validation-error` and `test` with 422 `http-request-invalid`, detail `http_request invalid: <field>: <message>` (fields like `url`, `headers[0].key`, `body.content`). A missing `http_request` on a style-3 function fails as `invalid-function-body`. Responses for HTTP rows return an empty `script`; read `http_request` instead.
+
+## MCP server functions
+MCP servers are connected in the portal. Each tool a connected server offers appears as a function: `fertigai_functions_list` returns them with `source: "mcp"` (or `"all"`), and they read back with `is_preset_link: true`. They mirror the server's tools and stay in sync with it: a changed tool updates its function, and a tool the server no longer offers removes its function.
+
+- They are read-only. `fertigai_functions_update` is rejected with `422` (`preset_link_locked: function is managed by its MCP server and cannot be edited`), and `fertigai_functions_delete` with `409` (`mcp_generated_locked: MCP tool functions cannot be deleted`).
+- Attach one like any function, by its `fn_...` id (attachments.md). Its `parameter_values` are set for you: every parameter is filled by the model, described by the tool's own parameter description, and values you send are replaced.
+
+## Optional parameters
+When a function is called, an optional parameter (`required: false`) may be omitted or sent as `null`; both count as not supplied, and `null` reaches the script unchanged. A required parameter sent as `null` is rejected as missing.
 
 ## Test before you save
 `fertigai_functions_test` runs a draft (without saving) and returns the outcome and logs. Always test a new or changed `script` (or `visual_graph`, `http_request`) before `create` or `update`. `script` is optional when `http_request` is set.
