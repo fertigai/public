@@ -52,7 +52,7 @@ Both URLs accept an optional `toolsets` query parameter that limits the tools th
 | Domain | Tools (prefix `fertigai_`) | Reference |
 |---|---|---|
 | Identity (start here) | whoami | this file |
-| Agents + branches | agents_list/get/create/rename/delete/duplicate, agent_branch_get/create/configure/update/delete, agent_set_active_branch, prompt_presets_list/create/update/delete | references/agents.md (+ agents-workflow.md) |
+| Agents + branches | agents_list/get/create/rename/delete/duplicate/copy_to_workspace, agent_branch_get/create/configure/update/delete, agent_set_active_branch, prompt_presets_list/create/update/delete | references/agents.md (+ agents-workflow.md) |
 | Branch attachments | agent_attachments_get, agent_branch_configure (shared with config), system_tools_list | references/attachments.md |
 | Knowledge base | knowledge_base_list, knowledge_base_folders_create, knowledge_base_files_create, knowledge_base_items_rename/move/delete | references/knowledge-base.md |
 | Conversation tests | conversation_test_folders_list/create/update/delete, conversation_tests_list/get/create/update/delete, agent_branch_conversation_tests_list/attach/detach, conversation_test_runs_start/list/get | references/conversation-tests.md |
@@ -83,7 +83,6 @@ These are managed in the portal for now. There are no tools for them, so do not 
 - inviting, removing or changing workspace members, groups, roles, workspace settings or licenses (reading them works, see references/workspace-admin.md);
 - creating, rotating or revoking API keys (their metadata can be read);
 - changing the billing plan;
-- copying an agent to another workspace;
 - creating or rotating function keys;
 - revealing or rotating a webhook signing secret.
 

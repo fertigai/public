@@ -14,6 +14,7 @@ Shared conventions (ids, pagination, errors, permissions) are in the skill index
 | `fertigai_agents_rename` | `id`, `name` | renames the container only |
 | `fertigai_agents_delete` | `id` | deletes the agent |
 | `fertigai_agents_duplicate` | `id`, `name` | copies the agent in this workspace under a new name (see Duplicating an agent) |
+| `fertigai_agents_copy_to_workspace` | `id`, `target_workspace_slug`, `name` | copies the agent into another workspace of the same organization (see Copying an agent to another workspace) |
 | `fertigai_agent_branch_get` | `agent_id`, `branch_id` | one branch, including its config |
 | `fertigai_agent_branch_create` | `agent_id`, `name`, `from_branch_id` | fork a branch from an existing one |
 | `fertigai_agent_branch_configure` | `agent_id`, `branch_id`, `config?`, `attachments?` | the main "configure the agent" tool: sets a branch's config and/or its function and knowledge-base attachments in one call. Each section is optional; send only what you're changing |
@@ -78,6 +79,30 @@ Reading and re-sending both is the safe default: it stops a config edit from sil
 
 ## Duplicating an agent
 `fertigai_agents_duplicate { id, name }` copies an agent within the same workspace. The copy gets one active branch, "Main", made from the source's active branch: its config, variables, classification categories, and its function, action and knowledge-base attachments (new function keys are created for the copied function attachments). Other branches, phone numbers and conversations are not copied. A source without an active branch gives `404`. Needs Agents-Edit.
+
+## Copying an agent to another workspace
+`fertigai_agents_copy_to_workspace { id, target_workspace_slug, name, workspace }` copies an agent into another workspace of the same organization.
+- `id`: the source agent (`agt_...`).
+- `target_workspace_slug`: the workspace to copy into. It must be another workspace in the same organization.
+- `name`: the name of the copy.
+- `workspace`: the slug of the source workspace, as for every tool on an org-wide connection.
+
+Who may call it: only a signed-in user over an org-wide connection, with Agents-Edit in both the source and the target workspace. A workspace API key (`wsk_...`) or a per-workspace connection gets `404`.
+
+What the copy gets:
+- One active branch, "Main", made from the source's active branch.
+- Its functions, knowledge-base items and actions are reused in the target when an identical one already exists there; otherwise they are cloned into the target.
+- Functions of a remote MCP server map to the target's own MCP server with the same slug.
+
+What is not copied:
+- Parameter values that come from a secret, and connection bindings. Those attachments land stale in the target until you bind them again there.
+- Other branches, phone numbers and conversations.
+
+The result is the new agent in the target workspace; its `id` belongs to the target. Errors:
+- `404` for a workspace API key or a per-workspace connection, for a missing source agent, or for a target workspace that does not exist or is in another organization.
+- `403` without Agents-Edit in the source or the target.
+- `409` when the target lacks an MCP server or MCP tool the agent uses. The error text names each one, and nothing is written. Create or sync that server in the target first.
+- `422` for an empty `name` or `target_workspace_slug`, or when the target is the source workspace.
 
 ## Prompt presets
 A prompt preset is a named, reusable prompt text for chat agents, shared across the workspace. These tools need the Chat product.
