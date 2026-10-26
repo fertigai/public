@@ -16,6 +16,16 @@ The script is an ES module with a `run(ctx)` export (TypeScript accepted), and t
 | `fertigai_functions_update` | `id`, `name`, `description`, `parameter_schema`, `script`, `connections?`, `visual_graph?`, `http_request?`, `usage_fixes?`, `dry_run?` |
 | `fertigai_functions_delete` | `id` |
 | `fertigai_functions_test` | `script?`, `parameter_schema`, `parameter_values`, `ctx_params?`, `function_id?`, `connection_bindings?`, `visual_graph?`, `http_request?` |
+| `fertigai_function_usages` | `id` |
+| `fertigai_function_keys_list` | `function_id`, `attached_function_id?` |
+| `fertigai_function_keys_delete` | `function_id`, `key_id` |
+| `fertigai_function_executions_list` | `function_id`, `cursor?`, `page_size?` |
+| `fertigai_function_executions_get` | `function_id`, `execution_id` |
+| `fertigai_agent_function_executions_list` | `agent_id`, `attached_function_id?`, `cursor?`, `page_size?` |
+| `fertigai_scheduled_functions_list` | `status?`, `cursor?`, `page_size?` |
+| `fertigai_scheduled_functions_get` | `id` |
+| `fertigai_scheduled_functions_create` | `function_id`, `run_at`, `params?` |
+| `fertigai_scheduled_functions_delete` | `id` |
 
 ## Fields
 - `style`: integer. `1` = Script (a JavaScript function, the common case), `2` = Visual (the drag-and-drop builder, which uses `visual_graph` instead of `script`), `3` = HTTP (one HTTP request; `http_request` instead of `script`, see HTTP functions below).
@@ -80,7 +90,7 @@ When a function is called, an optional parameter (`required: false`) may be omit
 `fertigai_functions_test` runs a draft (without saving) and returns the outcome and logs. Always test a new or changed `script` (or `visual_graph`, `http_request`) before `create` or `update`. `script` is optional when `http_request` is set.
 
 ## Stale usages
-An update may not break the places that use the function: agent and workflow attachments, task triggers that run it, and pending scheduled runs. If the new parameters or connection roles would leave any of them stale, nothing is saved and the tool returns a `409` error with one line per usage: why it no longer fits, and its `current_values`.
+An update may not break the places that use the function: agent and workflow attachments, task triggers that run it, and pending scheduled runs. `fertigai_function_usages { id }` lists every usage before you change anything: agent attachments, task trigger actions, scheduled runs and mail hooks, stale ones first, each with `is_stale`, `stale_reason` (set only when stale) and its `current_values`. It needs Integrations-Manage. If the new parameters or connection roles would leave any of them stale, nothing is saved and the tool returns a `409` error with one line per usage: why it no longer fits, and its `current_values`.
 
 - A usage whose only problem is a dynamic variable that its agent branch no longer declares does not block the update; declare the variable on the branch again or pick another source.
 - Mail hooks have no parameter values, so they are never stale.
@@ -104,6 +114,31 @@ fertigai_functions_update {
   ]
 }
 ```
+
+## Function keys
+A function key authenticates calls to a function. Every attachment gets its own key automatically; standalone keys are created and rotated in the portal. Over MCP you can only list and revoke keys, and no tool ever returns a key's value.
+- `fertigai_function_keys_list` returns every key of the function, revoked ones included: `id`, `label`, `last_four`, `attached_function_id` (empty for a standalone key), `connection_bindings`, `created_at`, `last_used_at` and `revoked_at` (empty while the key works). Pass `attached_function_id` (`afn_...`) to see only the key of one attachment.
+- `fertigai_function_keys_delete` revokes a standalone key at once; it stays in the list with `revoked_at` set. A key that belongs to an attachment cannot be revoked (`409`): detach the function instead. Revoking a key twice gives `404`. Needs Integrations-Manage.
+
+## Run history
+- `fertigai_function_executions_list` lists a function's runs, newest first: status, duration, what triggered the run, and the attachment and key used.
+- `fertigai_agent_function_executions_list` lists the function runs of one agent, optionally only those of one attachment (`attached_function_id`).
+- `fertigai_function_executions_get` returns one run in full: the parameters it got, the return value (or a note that it was too large to keep), logs, the error and the triggering event. It needs Integrations-Manage; the two list tools need only workspace access.
+
+## Scheduled runs
+A scheduled run calls a function once, at a set time, with fixed parameters.
+```
+fertigai_scheduled_functions_create {
+  "function_id": "fn_...",
+  "run_at": "2026-11-02T09:00:00Z",
+  "params": { "customer_id": "C-1042" }
+}
+```
+- `run_at` is an RFC 3339 timestamp and must be in the future; `params` is keyed by parameter key and must fit the function's `parameter_schema` (omit it, or send `{}`, when the function takes none). Either failing is a `422`; a function that is not in the workspace is a `404`.
+- `fertigai_scheduled_functions_list` returns runs with the latest `run_at` first: function, `params`, `run_at`, `status` and error. Filter with `status`: `pending`, `running`, `succeeded` or `failed` (any other value is a `400`).
+- There is no update. To change a run, delete it and create it again.
+- `fertigai_scheduled_functions_delete` cancels a pending run or removes a finished one for good. A run that is running right now gives `409`. Finished runs are also cleaned up automatically after a while.
+- Creating and deleting need Integrations-Manage.
 
 ## Example
 ```
@@ -130,6 +165,7 @@ fertigai_functions_create {
 - An unquoted placeholder in a JSON body (`"n": {{params.n}}`): rejected with `422`. Quote it (`"n": "{{params.n}}"`); a whole-string placeholder keeps the value's type.
 - Sending `script` together with `http_request`: ignored on functions, rejected on actions; send only `http_request`.
 - Re-sending an update after a `409` without `usage_fixes`: it is refused again. Add one entry per listed usage, or use `dry_run` to try first.
-- Expecting a "run this function now" tool over MCP: there is none. Functions are invoked by agents at runtime; use `fertigai_functions_test` for dry runs.
+- Expecting a "run this function now" tool over MCP: there is none. Functions are invoked by agents at runtime; use `fertigai_functions_test` for dry runs, or `fertigai_scheduled_functions_create` for one real run at a future time.
+- Expecting a tool that creates or rotates a function key, or shows a key's value: keys are managed in the portal.
 
 Writes need Integrations-Manage.

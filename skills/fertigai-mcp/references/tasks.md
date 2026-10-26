@@ -50,6 +50,7 @@ Shared conventions (ids, pagination, errors, permissions) are in the skill index
 | `fertigai_task_triggers_create` | `body`: `{ name, position?, active?, run_on, conditions: { all: [...], any: [...] }, actions: [...] }` (see Triggers) |
 | `fertigai_task_triggers_update` | `id`, `body`: as for create (full replace) |
 | `fertigai_task_triggers_delete` | `id` (permanent) |
+| `fertigai_task_triggers_test` | `body`: `{ run_on, conditions, actions, context }` (a dry run, see Testing a trigger) |
 
 **Tasks**
 | Tool | Args |
@@ -59,6 +60,20 @@ Shared conventions (ids, pagination, errors, permissions) are in the skill index
 | `fertigai_tasks_create` | `body` (see below) |
 | `fertigai_tasks_update` | `ref`, `body` (see below) |
 | `fertigai_tasks_comment` | `ref`, `body`: the comment text (markdown) |
+| `fertigai_tasks_delete` | `ref` (permanent, see Deleting a task) |
+| `fertigai_tasks_events` | `ref`, `cursor?`, `page_size?` |
+| `fertigai_tasks_relations_create` | `ref`, `kind`, `task` |
+| `fertigai_tasks_relations_delete` | `ref`, `relation_id` |
+| `fertigai_tasks_subscribe`, `fertigai_tasks_unsubscribe` | `ref` |
+
+**Views**
+| Tool | Args |
+|---|---|
+| `fertigai_task_views_list` | none |
+| `fertigai_task_views_get` | `id` |
+| `fertigai_task_views_create` | `body`: `{ name, visibility?, filters?, display? }` (see Views) |
+| `fertigai_task_views_update` | `id`, `body`: as for create (full replace) |
+| `fertigai_task_views_delete` | `id` |
 
 - `ref` is a task key (`SUP-12`), a task id (`tsk_...`), or, for a migrated ticket, its `tkt_...` id or old ticket number (for example `42`). After a task moves to another type, its old key keeps resolving.
 - `fertigai_tasks_list` filters are comma-separated lists, newest activity first: `type` (type ids or keys), `status_category` (`NEW`, `OPEN`, `PENDING`, `SOLVED`, `CLOSED`), `assignee` (`usr_...`, `grp_...`, `ME`, or `NONE`), `priority`, `label` (`tlb_...`), `tag`, and `q` (free text in titles). **`ME` needs a user session (OAuth); with an API key it matches nothing.** The list shows only tasks the caller can see.
@@ -103,6 +118,39 @@ Only `title` is required. Without `type_id` (a `tty_...` id or a type key) the t
 - Also accepted: `title`, `description`, `assigned_group_id`, `requester_user_id`, `requester_contact_id` (sending either requester key replaces the requester), `parent` (`""` makes the task top level), and `type_id` (moves the task to another type: it gets a new key, and its status is mapped by category).
 - `fields` merges by field key; `null` clears a value.
 - Labels, tags and linked conversations change only through the `_add`/`_remove` and `_link`/`_unlink` lists; there is no `label_ids` or `tags` on update.
+
+## Deleting a task
+`fertigai_tasks_delete` is permanent: the task disappears from every list and cannot be restored, and an agentic worker run on it is cancelled. It needs Tasks-Admin. To keep a task but close it, set a `CLOSED` status instead.
+
+## Activity
+`fertigai_tasks_events` lists a task's timeline, oldest first; follow `next` to read on. Each event has a `kind` (`CREATED`, `COMMENT`, `CHANGED`, `RELATION`, `CONVERSATION`, `LEGACY_PUBLIC_REPLY`, `TRIGGER`), `author_kind`, `author`, `body` (comments) and `data` (what changed). Events that name a task you cannot see are redacted.
+
+## Relations
+`fertigai_tasks_relations_create { ref, kind, task }` links `ref` to another task you can see. `task` is a `KEY-n`, `tsk_...` or `tkt_...` reference.
+- `kind` is read from `ref`'s side: `BLOCKS`, `BLOCKED_BY`, `RELATED`, `DUPLICATE_OF` or `DUPLICATED_BY`.
+- `DUPLICATE_OF` and `DUPLICATED_BY` close the duplicate when its type has a `CLOSED` status.
+- It returns the task with its `relations`, each with a `trl_...` id. `fertigai_tasks_get` returns them too; there is no separate list tool.
+- `fertigai_tasks_relations_delete { ref, relation_id }` works from either task of the relation.
+- An unknown kind, a task related to itself, or another task that is missing or hidden from you is a `422`; a relation that already exists is a `409`. Both tools need Tasks-Manage.
+
+## Subscriptions
+`fertigai_tasks_subscribe` and `fertigai_tasks_unsubscribe` add or remove you as a subscriber to a task's notifications. They need a user identity (an OAuth connection); an API key gets `422` (`API keys cannot subscribe`). Seeing the task is enough; no manage permission is needed.
+
+## Views
+A view is a saved, cross-type filter and layout over the workspace's tasks (`tvw_...`). `fertigai_task_views_list` returns the shared views and your own private ones.
+```json
+{
+  "name": "Urgent support",
+  "visibility": "SHARED",
+  "filters": { "types": ["SUP"], "priorities": ["URGENT", "HIGH"], "assignees": ["NONE"] },
+  "display": { "layout": "BOARD", "group_by": "STATUS_CATEGORY", "order_by": "LAST_ACTIVITY_AT", "order_dir": "DESC", "show_properties": [], "show_subtasks": false }
+}
+```
+- `visibility`: `PRIVATE` (the default, only you see it) or `SHARED`. An API key cannot create a private view (`422`). Creating a shared view, changing a shared view, or changing the visibility needs Tasks-Manage.
+- `filters`: `types` (`tty_...` ids or keys), `status_categories`, `statuses` (`sts_...`; needs exactly one entry in `types`), `priorities`, `assignees` (`usr_...`, `grp_...`, `ME`, `NONE`), `requesters` (`usr_...`, `con_...`), `labels` (`tlb_...`), `tags`, and `fields` (`{ "<field key>": <value> }`). Each list matches any of its entries; different keys must all match.
+- `display`: `layout` `LIST` or `BOARD`; `group_by` `STATUS_CATEGORY`, `STATUS`, `PRIORITY`, `ASSIGNEE` or `TYPE` (required for `BOARD`); optional `sub_group_by` from the same list; `order_by` `LAST_ACTIVITY_AT`, `CREATED_AT`, `PRIORITY`, `NUMBER` or `TITLE`; `order_dir` `ASC` or `DESC`; `show_properties`; `show_subtasks`.
+- `fertigai_task_views_update` is a full replace; `"visibility": ""` keeps the current visibility. Deleting a shared view needs Tasks-Manage.
+- Someone else's private view is a `404`.
 
 ## Editing pattern
 - **Types, fields, labels, triggers** are replaced in full by their `update` tools. Get the entry, change the returned object, and send all of it back. On a type, reuse the status ids that `get` returned, or tasks lose their status.
@@ -166,12 +214,28 @@ A trigger runs its actions on a task when its conditions match. Triggers are eva
 - `CreateTask`: `task` takes the `fertigai_tasks_create` body. `"parent": "{{id}}"` makes the new task a sub-task of the triggering one. A trigger creates at most one task per triggering task.
 - `RunFunction`: `function` is a `fn_...` id, `input` holds the function's parameters, and `connection_bindings` (`[{ "role", "connection_public_id" }]`) binds each connection role the function declares. The function runs with `ctx.event.type` `"task-trigger"` and receives the task as `ctx.task` (see functions.md).
 
+**Testing a trigger**: `fertigai_task_triggers_test` evaluates an unsaved trigger against a hypothetical task. Nothing is written or sent. It needs Tasks-Manage.
+```json
+{
+  "run_on": "UPDATED",
+  "conditions": { "all": [ { "field": "PRIORITY", "field_key": "", "operator": "CHANGED_TO", "value": "URGENT" } ], "any": [] },
+  "actions": [ { "action": { "AddComment": { "body": "Escalated {{key}}." } } } ],
+  "context": {
+    "event": "UPDATED",
+    "task": { "type_id": "tty_...", "status_id": "sts_...", "status_category": "OPEN", "priority": "URGENT", "title": "Printer on fire" },
+    "changes": [ { "field": "PRIORITY", "field_key": "", "from": "LOW", "to": "URGENT" } ]
+  }
+}
+```
+- `context` is required (`422` without it). `event` is `CREATED`, `UPDATED` or `TIME`; `task` is the task after the event and also takes `assignee`, `requester_email`, `created_via`, `fields` (by field key), `tags`, `label_ids`, and `minutes_in_status`, `minutes_since_activity`, `minutes_since_created` for time conditions. `changes` (`[{ field, field_key?, from, to }]`, with the condition field names) applies to `UPDATED`; `CREATED` derives them from `task`, and `TIME` has none.
+- The answer has `matched`, `run_on_matched`, one result per condition in `conditions`, and, when matched, `planned`: the task `update` the trigger would make, the other actions it would run (`dispatches`), and `warnings`.
+
 **Placeholders**: `{{path}}` in `AddComment.body`, `SendEmail.body`, every string of `CreateTask.task`, and `RunFunction.input` resolves against the task after the trigger's own changes. Paths: `id`, `key`, `number`, `type_id`, `title`, `status_id`, `status_category`, `priority`, `assignee`, `requester_email`, `created_via`, `source`, `tags`, `labels`, and `custom.<field key>`. Use `{{source}}` for the task's source (`{{channel}}` no longer exists). An unknown path resolves to an empty string. A string that is exactly one placeholder keeps the value's type (numbers stay numbers, lists stay lists); inside longer text, lists join with `", "`. Values are inserted once and never re-scanned, so a title containing `{{...}}` stays literal. `SetField` values do not take placeholders.
 
 ## Permissions
-- Every tool needs the **Tasks** product and the Tasks-View permission (`tasks.view`).
-- Creating or changing tasks, types, fields, labels and triggers needs Tasks-Manage (`tasks.manage`). The trigger tools need it for reads too.
-- Tasks-Admin (`tasks.admin`) also sees every private task type and its tasks. An API key needs it to create a private type.
+- Every tool needs the **Tasks** product and the Tasks-View permission.
+- Creating or changing tasks, types, fields, labels and triggers needs Tasks-Manage. The trigger tools need it for reads too.
+- Tasks-Admin also sees every private task type and its tasks, and is needed to delete a task. An API key needs it to create a private type.
 - A private type, or a task of one, that the caller cannot see returns `404`.
 
 ## Migrated tickets
@@ -188,3 +252,5 @@ Workspaces that used tickets have them as tasks now:
 - A `TYPE` condition with a type key: it takes a `tty_...` id.
 - A time condition in an event trigger, in `any`, or a `TIME` trigger without exactly one `GREATER` clock: rejected with `422`.
 - Filtering with `assignee: "ME"` on an API key: it matches nothing.
+- Deleting a task you only want to close: deletion is permanent. Set a `CLOSED` status instead.
+- Subscribing with an API key: it gets `422`. Use an OAuth connection.

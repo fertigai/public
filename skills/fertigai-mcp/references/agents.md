@@ -13,10 +13,17 @@ Shared conventions (ids, pagination, errors, permissions) are in the skill index
 | `fertigai_agents_create` | `name`, `config?` | creates the agent and a "Main" branch; omit `config` for a blank agent |
 | `fertigai_agents_rename` | `id`, `name` | renames the container only |
 | `fertigai_agents_delete` | `id` | deletes the agent |
+| `fertigai_agents_duplicate` | `id`, `name` | copies the agent in this workspace under a new name (see Duplicating an agent) |
 | `fertigai_agent_branch_get` | `agent_id`, `branch_id` | one branch, including its config |
 | `fertigai_agent_branch_create` | `agent_id`, `name`, `from_branch_id` | fork a branch from an existing one |
 | `fertigai_agent_branch_configure` | `agent_id`, `branch_id`, `config?`, `attachments?` | the main "configure the agent" tool: sets a branch's config and/or its function and knowledge-base attachments in one call. Each section is optional; send only what you're changing |
 | `fertigai_agent_set_active_branch` | `agent_id`, `branch_id` | make a branch the live one |
+| `fertigai_agent_branch_update` | `agent_id`, `branch_id`, `name` | renames a branch; nothing else changes |
+| `fertigai_agent_branch_delete` | `agent_id`, `branch_id` | deletes a branch with its config and attachments; irreversible |
+| `fertigai_prompt_presets_list` | `cursor?`, `page_size?` | reusable prompt texts for chat agents (see Prompt presets) |
+| `fertigai_prompt_presets_create` | `name`, `content` | |
+| `fertigai_prompt_presets_update` | `id`, `name?`, `content?` | only the fields you send change |
+| `fertigai_prompt_presets_delete` | `id` | |
 
 There is no "list branches" tool (branches are embedded in `fertigai_agents_get`) and no `fertigai_agents_update` (config only changes through `fertigai_agent_branch_configure`). The `attachments` section of that same tool is documented in attachments.md.
 
@@ -62,9 +69,22 @@ Reading and re-sending both is the safe default: it stops a config edit from sil
 ## Branches
 - Agent create seeds one active branch named "Main".
 - `fertigai_agent_branch_create { agent_id, name, from_branch_id }` forks a branch: it copies the entire config (model, prompt, the whole workflow graph, variables, and every setting group) plus classification categories, extracted variables, and attachments (post-call actions, knowledge bases, function attachments). The new branch is created inactive.
-- `fertigai_agent_set_active_branch` makes a branch live. You cannot delete the active branch.
+- A new branch always starts as a copy: `from_branch_id` is required.
+- `fertigai_agent_set_active_branch` makes a branch live.
+- `fertigai_agent_branch_update` renames a branch. To change its config, use `fertigai_agent_branch_configure`.
+- `fertigai_agent_branch_delete` deletes a branch for good. The active branch cannot be deleted (`409`): make another branch active first. Renaming and deleting need Agents-Edit.
 - Deleting an agent, or a branch, that an `agent_transfer` node or a `transfer_to_agent` target on another branch points at is refused with `409`, naming the agent that holds the reference (and the node, for a node); change or remove the node or the target first. References held by the branch being deleted, or by the agent being deleted, do not count.
 - Editing config never changes the agent's name (use `fertigai_agents_rename`).
+
+## Duplicating an agent
+`fertigai_agents_duplicate { id, name }` copies an agent within the same workspace. The copy gets one active branch, "Main", made from the source's active branch: its config, variables, classification categories, and its function, action and knowledge-base attachments (new function keys are created for the copied function attachments). Other branches, phone numbers and conversations are not copied. A source without an active branch gives `404`. Needs Agents-Edit.
+
+## Prompt presets
+A prompt preset is a named, reusable prompt text for chat agents, shared across the workspace. These tools need the Chat product.
+- `name` is 1 to 120 characters and unique in the workspace (a taken name is a `409`); `content` is 1 to 20000 characters. Values outside those limits are a `422`.
+- `fertigai_prompt_presets_list` returns full presets, newest first; there is no separate get tool.
+- `fertigai_prompt_presets_update` changes only the fields you send; an empty `name` or `content` is a `422`.
+- Only the preset's creator, a workspace owner or admin, or a Workspace Manager may update or delete it; anyone else gets `403`.
 
 ## Example: create then configure
 Create the agent (this seeds an active branch named "Main"):
@@ -93,6 +113,8 @@ fertigai_agent_branch_configure {
 - Adding a `function` node to the workflow without also sending its attachment in the same `fertigai_agent_branch_configure` call: the call is rejected (see attachments.md).
 - Sending `gdpr.anonymization` without its `entities` list: the list you send is taken literally, so `{ "enabled": true }` on its own anonymizes NO entity. Read the config, edit the object, send it back whole (see `agents-workflow.md`).
 - Confusing `agent_id` and `branch_id`: both are separate arguments on the branch tools.
+- Expecting `fertigai_agent_branch_update` to change config: it only renames.
+- Deleting the active branch: switch the active branch first.
 - A `403` even though the key has Agents-Edit: the workspace also needs the agents product enabled for these tools.
 
 Writes to `config` need Agents-Edit and the agents product; writes to `attachments` need Integrations-Manage (see attachments.md).

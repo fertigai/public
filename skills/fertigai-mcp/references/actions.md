@@ -14,6 +14,9 @@ Code actions are an ES module with a `run(ctx)` export (TypeScript accepted). Th
 | `fertigai_actions_update` | `id`, `name`, `description`, `style`, `script_source?`, `pipeline?`, `http_request?`, `parameter_schema?`, `connections?`, `usage_fixes?`, `dry_run?` |
 | `fertigai_actions_delete` | `id` |
 | `fertigai_actions_test` | `script?`, `parameter_schema?`, `parameter_values?`, `ctx_params?`, one of `conversation_public_id` or `script_ctx`, `action_id?`, `connection_bindings?`, `http_request?` |
+| `fertigai_action_usages` | `id` |
+| `fertigai_action_executions_list` | `action_id`, `agent_id?`, `cursor?`, `page_size?` |
+| `fertigai_action_executions_get` | `action_id`, `execution_id` |
 
 ## Attaching actions to a branch
 Actions run after a conversation ends, once per attachment on the branch.
@@ -28,6 +31,7 @@ Actions run after a conversation ends, once per attachment on the branch.
 
 ## Fields
 - `style`: integer. `2` = Code (put the action logic in `script_source`), `1` = Visual (uses `pipeline`), `3` = HTTP (uses `http_request`, no `script_source`). For a code action use `style: 2` with a `script_source`.
+- `parameter_schema`: `{ "parameters": [{ "key", "description", "type", "required", "default_value?", "enum_values?" }] }`. `key` is lowercase letters, digits and underscores, starting with a letter, max 32 characters. `type` is an integer, numbered differently from functions: `1` string, `2` number, `3` integer, `4` boolean, `5` enum (needs `enum_values`), `6` secret reference (no `default_value`).
 - Do NOT send `preset_key` on create; it is server-managed and rejected.
 - `style` is immutable across updates (a different value is rejected).
 - `connections`: the connection roles the script reads, `[{ "role", "slug", "required" }]`, at most 8. `role` is lowercase letters, digits and underscores, max 32 characters; `slug` is a connection type from the workspace's connection catalogue; a non-empty list must contain a required `default` role. The script reads `ctx.connections[role]`, and `ctx.connection` is the `default` role. Omit it or send `[]` when the action needs no connection. Responses return `connections` in the catalogue entry shape, with the `connected` candidates for each role (integrations.md).
@@ -64,8 +68,14 @@ Unlike a function, an action's return value is stored verbatim as the execution 
 ## Test before saving
 `fertigai_actions_test` dry-runs a draft. It needs a context source: pass either a real `conversation_public_id` to run against a past conversation, or a `script_ctx` object with mock context. Provide exactly one of them, not both.
 
+## Run history
+- `fertigai_action_executions_list` lists an action's runs, newest first: status, duration and the conversation. Pass `agent_id` to see only the runs for one agent.
+- `fertigai_action_executions_get` returns one run in full: its `summary`, `return_value`, `logs` and `error_text`.
+- Only code and HTTP actions keep a run history; for a visual action both tools return `404`.
+- To start from a conversation instead, `fertigai_conversations_script_runs` lists that conversation's action runs (conversations.md).
+
 ## Stale attachments
-An update may not break the branches the action is attached to. If the new parameters or connection roles would leave an attachment stale, nothing is saved and the tool returns a `409` error with one line per attachment: why it no longer fits, and its `current_values`. Send the same update again with `usage_fixes`, one `{ "id": "aba_...", "parameter_values": { ... } }` per attachment: its full new values in the shape of its `current_values` (omit to keep them), plus `connection_bindings` to replace its role bindings (omit to keep them). The update and every fix are saved together, or nothing is. `dry_run: true` runs the same checks and fixes without saving anything.
+An update may not break the branches the action is attached to. `fertigai_action_usages { id }` lists every branch the action is attached to before you change anything, stale ones first, each with `is_stale`, `stale_reason` (set only when stale) and its `current_values`. It needs Integrations-Manage. If the new parameters or connection roles would leave an attachment stale, nothing is saved and the tool returns a `409` error with one line per attachment: why it no longer fits, and its `current_values`. Send the same update again with `usage_fixes`, one `{ "id": "aba_...", "parameter_values": { ... } }` per attachment: its full new values in the shape of its `current_values` (omit to keep them), plus `connection_bindings` to replace its role bindings (omit to keep them). The update and every fix are saved together, or nothing is. `dry_run: true` runs the same checks and fixes without saving anything.
 
 ```
 fertigai_actions_update {
