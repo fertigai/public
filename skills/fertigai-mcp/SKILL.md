@@ -55,7 +55,20 @@ Call `fertigai_whoami` right after connecting to confirm which kind you have (it
 | Conversations (read only) | conversations_list/get | references/conversations.md |
 | SIP trunks (read only) | sip_trunks_list, sip_trunks_health | references/sip-trunks.md |
 
-Before using a domain's tools, READ its reference file (path relative to this skill) for field details, workflows, and gotchas. `references/scripting.md` covers the JavaScript/TypeScript environment shared by functions and actions (the `run(ctx)` contract, built-in primitives like `mail.send` and `llm.send`, sandbox limits). `fertigai_whoami` is workspace-agnostic (no `workspace` argument, documented above); every other tool listed here is workspace-scoped (see Conventions below). If a reference file is missing locally, fetch the latest from `https://cdn.fertig.ai/skills/fertigai-mcp/references/<name>.md` (this file: `https://cdn.fertig.ai/skills/fertigai-mcp/SKILL.md`).
+Before using a domain's tools, READ its reference file (path relative to this skill) for field details, workflows, and gotchas. `references/scripting.md` covers the JavaScript/TypeScript environment shared by functions and actions (the `run(ctx)` contract, built-in primitives like `mail.send` and `llm.send`, sandbox limits). `fertigai_whoami` is workspace-agnostic (no `workspace` argument, documented above); every other tool listed here is workspace-scoped (see Conventions below). If a reference file is missing locally, fetch the latest from `https://raw.githubusercontent.com/fertigai/public/main/skills/fertigai-mcp/references/<name>.md` (this file: `https://raw.githubusercontent.com/fertigai/public/main/skills/fertigai-mcp/SKILL.md`).
+
+## Not available over MCP yet
+These are managed in the portal for now. There are no tools for them, so do not invent tool names or work around it; tell the user to use the portal:
+- phone numbers and assigning them to agents;
+- call flows, call queues and audio prompts;
+- opening hours and holidays (schedules);
+- custom object types and records, and contacts;
+- webhooks and inbound mail hooks;
+- knowledge base uploads and edits (listing and attaching work);
+- conversation tests;
+- SIP trunk changes (listing and health work);
+- connections and MCP servers;
+- workspace members, groups, roles and API keys.
 
 ## Conventions shared by every tool
 - **`workspace` targeting**: every tool except `fertigai_whoami` accepts an optional `workspace` argument (a workspace slug). On a per-workspace connection it's ignored, the connection is already scoped. On an org-wide connection it's REQUIRED: pass a slug from `fertigai_whoami`'s `workspaces[]`. Never guess a slug; use only a slug that `fertigai_whoami` (or a `list` tool) returned.

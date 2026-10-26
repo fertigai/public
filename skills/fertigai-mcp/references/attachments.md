@@ -36,7 +36,7 @@ Reading and re-sending both is the safe default. Because each section is a full 
 }
 ```
 - `functions.branch` / `knowledge_bases.branch`: available across the whole agent (conventionally bound at the `start_agent` node).
-- `functions.nodes["<id>"]` / `knowledge_bases.nodes["<id>"]`: scoped to one workflow node. `<id>` is the `id` of a `function` or `subagent` node in the branch's `config.workflow` (see agents.md and its `agents-workflow.md`).
+- `functions.nodes["<id>"]` / `knowledge_bases.nodes["<id>"]`: scoped to one workflow node. `<id>` is the `id` of a `function`, `subagent`, `directory_choose` or `directory_transfer` node in the branch's `config.workflow` (see agents.md and its `agents-workflow.md`).
 
 ## FunctionAttachmentInput fields
 | Field | Type | Notes |
@@ -50,6 +50,7 @@ Reading and re-sending both is the safe default. Because each section is a full 
 | `assignments` | array | response-to-variable assignments, see below |
 | `transfer_type`, `number_source`, `transfer_dynamic_variable`, `transfer_prompt`, `transfer_timeout_secs`, `transfer_routes` | | only for the `transfer_to_number` system tool, see below |
 | `agent_transfer_targets` | array | only for the `transfer_to_agent` system tool, see below |
+| `tool_call_settings` | object | how the call behaves while the function runs (sound, timeout, interruptions, speech before the call), see below. Ignored for system tools |
 
 ## parameter_values: the four sources
 Each key in `parameter_values` maps to a tagged object with exactly one source:
@@ -78,6 +79,26 @@ Each assignment extracts a value from the function's JSON result using a dot-not
 - Each `dynamic_variable` must match `^[a-zA-Z_][a-zA-Z0-9_]*$`, be unique within that attachment's assignments, and must not start with `system__` in any casing (`SYSTEM__x` and `System__x` are reserved too); `value_path` must be non-empty. Otherwise the call is rejected.
 - A target becomes a declared variable, so no two targets anywhere in the call may differ only by case (the uniqueness check above is per attachment and exact, so such a pair passes it and fails on the merged list), and no target may differ only by case from a variable the branch already declares: an assignment targeting `City` beside `city` is a `422`.
 - `assignments` apply only to user-defined functions. A system tool (`system_tool_type`) ignores them, so do not put assignments on `end_call`, `language_detection`, `transfer_to_number`, or `transfer_to_agent`; they are not applied at call time, but their targets still count for the naming rules above.
+
+## Tool call settings
+A function or integration entry can carry `tool_call_settings`, one object with five members. Every member is an integer, and `0` means the default:
+
+| Member | Values |
+|---|---|
+| `sound` | sound played to the caller while the function runs: `0` none (default), `1` typing, `2` to `5` elevator music 1 to 4 |
+| `sound_behavior` | when the sound plays: `0` or `1` auto, only after the agent spoke before calling the function (default); `2` always |
+| `response_timeout_secs` | seconds the function may take before the agent stops waiting for it: `5` to `300`; `0` means `20` (default) |
+| `interruption_mode` | `0` or `2` the caller cannot interrupt while the function runs (default); `1` the caller can interrupt; `3` the caller cannot interrupt while the function runs or during the agent's turn |
+| `pre_tool_speech` | whether the agent speaks before calling the function: `0` or `1` auto, the model decides (default); `2` always; `3` never |
+
+```json
+{ "function_id": "fn_...",
+  "parameter_values": {},
+  "tool_call_settings": { "sound": 1, "sound_behavior": 2, "response_timeout_secs": 60, "interruption_mode": 1, "pre_tool_speech": 2 } }
+```
+- Send all five members when you send the object. Omit the whole object for the defaults.
+- `fertigai_agent_attachments_get` returns the settings on every entry, so read-modify-write keeps them. An entry sent without `tool_call_settings` is saved with the defaults.
+- An unknown value or a `response_timeout_secs` outside `5` to `300` is rejected with `400` naming the member, for example `tool_call_settings.response_timeout_secs: must be between 5 and 300 seconds`.
 
 ## Transfer settings: transfer_to_number only
 A `transfer_to_number` entry carries its transfer settings at the attachment level:

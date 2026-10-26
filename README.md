@@ -4,7 +4,7 @@ Agent Skills for driving a [fertig.ai](https://fertig.ai) workspace through its 
 
 ## What's here
 
-One [Agent Skill](https://agentskills.io): `skills/fertigai-mcp`. Its `SKILL.md` is the index (endpoint, auth, ids, pagination, permissions, errors, the full `fertigai_*` tool catalogue), and detailed per-domain guides are bundled under `references/`:
+One [Agent Skill](https://agentskills.io): `skills/fertigai-mcp`. Its `SKILL.md` is the index (endpoint, auth, ids, pagination, permissions, errors, the full `fertigai_*` tool catalogue, and what is not available over MCP yet), and detailed per-domain guides are bundled under `references/`:
 
 | Reference | Covers |
 |---|---|
