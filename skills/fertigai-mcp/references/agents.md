@@ -101,7 +101,7 @@ What is not copied:
 The result is the new agent in the target workspace; its `id` belongs to the target. Errors:
 - `404` for a workspace API key or a per-workspace connection, for a missing source agent, or for a target workspace that does not exist or is in another organization.
 - `403` without Agents-Edit in the source or the target.
-- `409` when the target lacks an MCP server or MCP tool the agent uses. `missing_mcp_tools` names each one, and nothing is written. Create or sync that server in the target first.
+- `409` when the target lacks an MCP server or MCP tool the agent uses. The error text names each one, and nothing is written. Create or sync that server in the target first.
 - `422` for an empty `name` or `target_workspace_slug`, or when the target is the source workspace.
 
 ## Prompt presets
