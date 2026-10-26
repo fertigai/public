@@ -111,7 +111,7 @@ A `transfer_to_number` entry carries its transfer settings at the attachment lev
 - `transfer_type`: exactly `"COLD"` (connects directly) or `"ATTENDED"` (rings the destination first; the call returns to the agent if unanswered), case-sensitive in the same way as `number_source`. Empty means `COLD`.
 - `number_source`: where the number comes from. Empty means `LLM`. The three values are case-sensitive, so write them exactly as shown: `"llm_prompt"` is not `"LLM_PROMPT"`, and any other spelling or casing is rejected with `422`.
   - `"LLM"`: the model picks one of `transfer_routes`; at least one route needs a non-empty `number`.
-  - `"DYNAMIC_VARIABLE"`: the number comes from a branch dynamic variable; `transfer_dynamic_variable` is then REQUIRED and no routes are needed.
+  - `"DYNAMIC_VARIABLE"`: the number comes from a branch dynamic variable; `transfer_dynamic_variable` is then REQUIRED and no routes are needed. If the branch does not declare that variable yet, saving the attachment declares it with no default value, so give it a value: a `default_value` in `config.dynamic_variables`, or one set during the conversation. `caller_id`, `called_id`, and names starting with `system__` or `fertig__` are supplied by the platform and never declared. As for `DynamicVariable` parameter sources, a name that differs only by case from a declared variable, or that is not a valid variable name, is never declared for you: write the declared spelling exactly.
   - `"LLM_PROMPT"`: no routes are used; the model works the number out from `transfer_prompt`.
 
   In the two modes without routes, routes already on the entry are still stored and read back unchanged, so leaving the existing `transfer_routes` in place is safe and valid.
@@ -152,10 +152,10 @@ A `transfer_to_agent` entry hands the call to a branch of an agent in the same w
       "play_welcome_message": false, "delay_ms": 0 }
   ] }
 ```
-- At least one target. Each `branch_id` must be a branch of that `agent_id` in this workspace. Unlike the node, a target may also be the branch being configured itself.
-- `condition` is required and must not be empty after trimming: the agent hands the call to the target whose condition applies.
+- 1 to 20 targets. Each `branch_id` must be a branch of that `agent_id` in this workspace. Unlike the node, a target may also be the branch being configured itself.
+- `condition` is required, must not be empty after trimming and is at most 1000 characters: the agent hands the call to the target whose condition applies.
 - `transfer_message` is spoken before the handover (at most 500 characters after trimming, empty = none); `play_welcome_message` (default `false`) lets the target agent open with its own welcome message; `delay_ms` is a whole number from 0 to 10000 (default 0).
-- A target that breaks one of these rules is rejected with `422` naming it by position (counted from 1), for example `transfer_to_agent target 2 field 'condition' must not be empty`. An empty list is rejected with `transfer_to_agent field 'agent_transfer_targets' needs at least one target`. Sending `agent_transfer_targets` on any other attachment is rejected with `422` too.
+- A target that breaks one of these rules is rejected with `422` naming it by position (counted from 1), for example `transfer_to_agent target 2 field 'condition' must not be empty`. An empty list is rejected with `transfer_to_agent field 'agent_transfer_targets' needs at least one target`, and more than 20 with `transfer_to_agent accepts at most 20 targets`. Sending `agent_transfer_targets` on any other attachment is rejected with `422` too.
 - Branch level only: put it in `functions.branch`. Under `functions.nodes` it is rejected with `422`; inside a workflow use the `agent_transfer` node instead.
 - A target branch must have been saved (synced) at least once before this branch is saved, otherwise this branch's sync fails and names the target.
 - Deleting a branch that a target points at, or that branch's agent, is refused with `409` (see agents.md).
