@@ -15,6 +15,7 @@ One [Agent Skill](https://agentskills.io): `skills/fertigai-mcp`. Its `SKILL.md`
 | `functions.md` | Custom JavaScript function tools that agents can call during a conversation |
 | `actions.md` | Automations that run in response to a conversation (for example post-call steps) |
 | `scripting.md` | The shared JavaScript/TypeScript environment for functions and actions: `run(ctx)`, built-in primitives, limits |
+| `integrations.md` | The integration catalogue and function presets, connections (credentials, write-only), remote MCP servers whose tools become functions, and installing integration sources |
 | `tasks.md` | Tasks, task types, the field library, labels, and task triggers |
 | `custom-objects.md` | Custom object types and records (fields, lookups, filters), contacts, finding and merging duplicate contacts |
 | `mail-templates.md` | Reusable HTML email templates |
@@ -22,7 +23,7 @@ One [Agent Skill](https://agentskills.io): `skills/fertigai-mcp`. Its `SKILL.md`
 | `secrets.md` | Workspace secrets (write-only) |
 | `conversations.md` | Reading and searching conversation history, flagging conversations, their workflow route and action runs |
 | `telephony.md` | Phone numbers and number blocks, routing them to agents or call flows, call flows, call queues, audio prompts, opening hours and holidays |
-| `sip-trunks.md` | Listing SIP trunks and checking whether one is registered or reachable, and healthy |
+| `sip-trunks.md` | Creating, replacing and deleting SIP trunks from a provider template or by hand, placing test calls, and checking whether a trunk is registered or reachable, and healthy |
 
 ## Connecting to the MCP
 
