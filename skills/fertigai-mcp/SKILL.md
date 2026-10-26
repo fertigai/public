@@ -16,7 +16,8 @@ Call `fertigai_whoami` FIRST, before any other tool, on every new connection. It
   "organization": { "slug": "acme", "name": "Acme" },
   "grant": "org_wide",                    // "org_wide" | "workspace"
   "scopes": ["mcp:read", "mcp:write"],
-  "workspaces": [ { "slug": "support", "name": "Support", "role": "admin" }, … ]
+  "workspaces": [ { "slug": "support", "name": "Support", "role": "admin" }, … ],
+  "toolsets": ["agents", "functions", …]  // the toolsets this connection exposes (see Toolsets)
 }
 ```
 - **`grant: "workspace"`**: this connection is already scoped to one workspace. Every other tool call works as before; you do not need to pass `workspace`.
@@ -38,6 +39,14 @@ Two connection kinds, depending on whether you connect to one workspace or to ev
   - Every workspace tool call REQUIRES a `workspace` argument (a slug), since the connection has no single workspace to default to.
 
 Call `fertigai_whoami` right after connecting to confirm which kind you have (its `grant` field) and, on an org-wide connection, which workspace slugs you can target.
+
+### Toolsets
+Both URLs accept an optional `toolsets` query parameter that limits the tools the connection lists and can call, for clients that handle only a limited number of tools. Without it, every tool is available.
+
+- Example: `https://<your-org-host>/api/v1/workspaces/<workspace-slug>/mcp?toolsets=agents,functions`
+- Names (comma-separated): `agents` (agents, branches, attachments, system tools, knowledge base), `functions`, `actions`, `integrations`, `tasks`, `messaging` (mail templates), `secrets`, `conversations`, `telephony` (SIP trunks).
+- `fertigai_whoami` is always available and returns the active toolsets in `toolsets`.
+- An unknown name fails the connection with an error that lists the valid names. Calling a tool outside the active toolsets fails with `tool <name> is not in the active toolsets (...)`.
 
 ## Tool catalogue by domain
 | Domain | Tools (prefix `fertigai_`) | Reference |
