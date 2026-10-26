@@ -1,7 +1,7 @@
 # Listing SIP trunks and checking their health (fertigai_sip_trunks_list, fertigai_sip_trunks_health)
 
 ## Overview
-SIP trunks are **read-only** here: you can list the workspace's trunks and check whether one trunk is registered (or, for trunks that authenticate by IP address, reachable) and able to carry calls. You cannot create, edit, enable or disable trunks through this API; configure them in the portal.
+SIP trunks are **read-only** here (phone numbers, call flows and the rest of telephony routing are in `references/telephony.md`): you can list the workspace's trunks and check whether one trunk is registered (or, for trunks that authenticate by IP address, reachable) and able to carry calls. You cannot create, edit, enable or disable trunks through this API; configure them in the portal.
 
 Shared conventions (ids, errors, permissions) are in the skill index (SKILL.md). The tool also takes an optional `workspace` slug, required only when the connection is org-wide (see SKILL.md / `fertigai_whoami`).
 
