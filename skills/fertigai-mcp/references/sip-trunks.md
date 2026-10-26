@@ -98,7 +98,7 @@ A test call is a **real call**: it rings a real phone, it is billed, and the age
 3. Hang up with `fertigai_sip_trunks_test_call_end` (same args) if the call is still running. It is best effort and succeeds for a call that has already ended.
 
 Rules:
-- A start is **not idempotent**: every call places another phone call. Never retry a start after a timeout or a connection error. Check first whether the call was placed: look for it in `fertigai_conversations_list` (`agent_id`, newest first), and ask the user before you start another.
+- A start is **not idempotent**: every call places another phone call. Never retry a start after a timeout or a connection error. Ask the user whether the phone rang before you start another.
 - At most 6 test calls per workspace per minute; more return `429`.
 - `409` when the trunk is disabled or the agent has no active branch; `404` when the trunk or agent is not in the workspace; `400` for an unusable `to_number` or `caller_id`; `503` when telephony is temporarily unavailable.
 
@@ -176,7 +176,7 @@ fertigai_sip_trunks_health { "id": "st_..." }
 - Sending only the changed fields to `fertigai_sip_trunks_update`. It replaces the whole trunk: every omitted field resets. Copy the trunk from `fertigai_sip_trunks_list` and send it all back.
 - Sending a placeholder (`{sip_password}`) or the wrong password on update when you meant to keep it. Leave `password` empty to keep the stored one.
 - Putting a token or password in `custom_headers`. Headers are returned as written in every list.
-- Retrying a test call start after a timeout. It may already be ringing; check `fertigai_conversations_list` first.
+- Retrying a test call start after a timeout. It may already be ringing; ask the user first.
 - Placing test calls in a loop. Each one is billed, and the workspace limit is 6 per minute.
 - Expecting a tool that creates a health URL. Health URLs for uptime monitors are created in the portal.
 - Inventing a trunk id. Call `fertigai_sip_trunks_list` first and take an `st_` id from its result.
