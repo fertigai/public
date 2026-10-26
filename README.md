@@ -16,6 +16,7 @@ One [Agent Skill](https://agentskills.io): `skills/fertigai-mcp`. Its `SKILL.md`
 | `tasks.md` | Tasks, task types, the field library, labels, and task triggers |
 | `custom-objects.md` | Custom object types and records (fields, lookups, filters), contacts, finding and merging duplicate contacts |
 | `mail-templates.md` | Reusable HTML email templates |
+| `webhooks-and-mail-hooks.md` | Outbound webhooks (events, signature verification, test sends, delivery log and retries) and inbound mail hooks that run a function per received email |
 | `secrets.md` | Workspace secrets (write-only) |
 | `conversations.md` | Reading and searching conversation history, flagging conversations, their workflow route and action runs |
 | `telephony.md` | Phone numbers and number blocks, routing them to agents or call flows, call flows, call queues, audio prompts, opening hours and holidays |

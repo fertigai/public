@@ -1,12 +1,12 @@
 ---
 name: fertigai-mcp
-description: Use when managing a fertig.ai workspace through its MCP endpoint - creating or editing agents, branch attachments, prompt presets, functions and scheduled function runs, actions (including writing their JavaScript/TypeScript scripts), tasks, task types, fields, labels and triggers, custom objects and their records, contacts, mail templates, or secrets, reading and flagging conversations, or routing calls (phone numbers, call flows, call queues, audio prompts, opening hours and holidays, SIP trunk health) - via the fertigai_* tools. Detailed per-domain guides are bundled under references/.
+description: Use when managing a fertig.ai workspace through its MCP endpoint - creating or editing agents, branch attachments, prompt presets, functions and scheduled function runs, actions (including writing their JavaScript/TypeScript scripts), tasks, task types, fields, labels and triggers, custom objects and their records, contacts, mail templates, webhooks, inbound mail hooks, or secrets, reading and flagging conversations, or routing calls (phone numbers, call flows, call queues, audio prompts, opening hours and holidays, SIP trunk health) - via the fertigai_* tools. Detailed per-domain guides are bundled under references/.
 ---
 
 # fertig.ai Workspace MCP (fertigai_*)
 
 ## Overview
-The workspace MCP exposes your fertig.ai workspace configuration as MCP tools, all named `fertigai_*`. Point an MCP client at your workspace endpoint, authenticate with a workspace API key, and the tools let you manage agents and their configuration and attachments, prompt presets, automation (functions, scheduled function runs and actions), tasks, task types, fields, labels and triggers, custom objects and contacts, mail templates, and secrets, read and flag conversations, and route calls: phone numbers, call flows, call queues, audio prompts, opening hours, and SIP trunk health. Every tool respects the API key's role permissions.
+The workspace MCP exposes your fertig.ai workspace configuration as MCP tools, all named `fertigai_*`. Point an MCP client at your workspace endpoint, authenticate with a workspace API key, and the tools let you manage agents and their configuration and attachments, prompt presets, automation (functions, scheduled function runs and actions), tasks, task types, fields, labels and triggers, custom objects and contacts, mail templates, webhooks and inbound mail hooks, and secrets, read and flag conversations, and route calls: phone numbers, call flows, call queues, audio prompts, opening hours, and SIP trunk health. Every tool respects the API key's role permissions.
 
 ## Start with `fertigai_whoami`
 Call `fertigai_whoami` FIRST, before any other tool, on every new connection. It takes no arguments and tells you how to call every other tool correctly:
@@ -44,7 +44,7 @@ Call `fertigai_whoami` right after connecting to confirm which kind you have (it
 Both URLs accept an optional `toolsets` query parameter that limits the tools the connection lists and can call, for clients that handle only a limited number of tools. Without it, every tool is available.
 
 - Example: `https://<your-org-host>/api/v1/workspaces/<workspace-slug>/mcp?toolsets=agents,functions`
-- Names (comma-separated): `agents` (agents, branches, attachments, system tools, knowledge base, prompt presets), `functions`, `actions`, `integrations`, `tasks`, `messaging` (mail templates), `secrets`, `conversations`, `telephony` (phone numbers, call flows, call queues, audio prompts, schedules and SIP trunks), `objects` (custom objects and contacts).
+- Names (comma-separated): `agents` (agents, branches, attachments, system tools, knowledge base, prompt presets), `functions`, `actions`, `integrations`, `tasks`, `messaging` (mail templates, webhooks and mail hooks), `secrets`, `conversations`, `telephony` (phone numbers, call flows, call queues, audio prompts, schedules and SIP trunks), `objects` (custom objects and contacts).
 - `fertigai_whoami` is always available and returns the active toolsets in `toolsets`.
 - An unknown name fails the connection with an error that lists the valid names. Calling a tool outside the active toolsets fails with `tool <name> is not in the active toolsets (...)`.
 
@@ -61,6 +61,7 @@ Both URLs accept an optional `toolsets` query parameter that limits the tools th
 | Tasks | task_types_*, task_fields_*, task_labels_*, task_triggers_* (incl. test), task_views_*, tasks_list/get/create/update/comment/delete/events/subscribe/unsubscribe, tasks_relations_create/delete | references/tasks.md |
 | Custom objects + contacts | custom_object_types_list/get/create/update/delete, custom_object_records_list/get/create/update/delete, contacts_list/get/create/update/delete, contacts_field_schema_get/update, contacts_duplicates, contacts_merge, contacts_tasks/conversations/calls | references/custom-objects.md |
 | Mail templates | mail_templates_list/get/create/update/delete/preview | references/mail-templates.md |
+| Webhooks + inbound mail hooks | webhooks_list/get/create/update/delete/test, webhook_deliveries_list/get, webhook_event_types_list, mail_hooks_list/get/create/update/delete, mail_hook_deliveries_list | references/webhooks-and-mail-hooks.md |
 | Secrets | secrets_list/create/update/delete | references/secrets.md |
 | Conversations | conversations_list/get/flag/unflag/workflow/script_runs | references/conversations.md |
 | Telephony routing | phone_numbers_list/create/update/delete/countries/prefixes, phone_number_blocks_list/create/update/delete, agent_phone_numbers_list, agent_branch_phone_numbers_list/attach/detach, call_flows_list/get/create/update/delete/phone_numbers, agent_call_flows_list, call_queues_list/get/create/update/delete, audios_list/get/upload/url/update/delete, schedules_list/get/create/update/delete, holidays_list | references/telephony.md |
@@ -72,20 +73,20 @@ Before using a domain's tools, READ its reference file (path relative to this sk
 These are managed in the portal for now. There are no tools for them, so do not invent tool names or work around it; tell the user to use the portal:
 - buying phone numbers;
 - contact import, export, avatars and erasing a contact's personal data;
-- webhooks and inbound mail hooks;
 - knowledge base uploads and edits (listing and attaching work);
 - conversation tests;
 - SIP trunk changes (listing and health work);
 - connections and MCP servers;
 - workspace members, groups, roles and API keys;
 - copying an agent to another workspace;
-- creating or rotating function keys.
+- creating or rotating function keys;
+- revealing or rotating a webhook signing secret.
 
 ## Conventions shared by every tool
 - **`workspace` targeting**: every tool except `fertigai_whoami` accepts an optional `workspace` argument (a workspace slug). On a per-workspace connection it's ignored, the connection is already scoped. On an org-wide connection it's REQUIRED: pass a slug from `fertigai_whoami`'s `workspaces[]`. Never guess a slug; use only a slug that `fertigai_whoami` (or a `list` tool) returned.
-- **Public IDs** are prefixed and opaque: agents `agt_`, functions `fn_`, actions `act_`, secrets `sec_`, mail templates `mtpl_`, tasks `tsk_`, custom object types `cot_` and records `cor_`, contacts `con_`, phone numbers `phn_`, call flows `cfl_`, and similar. Always pass an id that a `list` or `get` returned; never invent one.
+- **Public IDs** are prefixed and opaque: agents `agt_`, functions `fn_`, actions `act_`, secrets `sec_`, mail templates `mtpl_`, webhooks `wh_` and their deliveries `whd_`, mail hooks `mhk_`, tasks `tsk_`, custom object types `cot_` and records `cor_`, contacts `con_`, phone numbers `phn_`, call flows `cfl_`, and similar. Always pass an id that a `list` or `get` returned; never invent one.
 - **Pagination**: list tools accept `cursor` and `page_size` (1 to 100, default 20). Responses look like `{ "data": [...], "pagination": { "next": "<cursor|null>", "has_more": bool } }`. To page, pass the previous response's `next` as `cursor`.
-- **Permissions and licenses**: writes need the matching role permission (agent config needs Agents-Edit; branch attachments, functions, actions, mail templates, and secrets need Integrations-Manage; tasks need the Tasks product; changes need Tasks-Manage). Reads need the view permission. Phone numbers, call flows and call queues need Telephony-View / Telephony-Manage (SIP trunk health needs Telephony-View); audio prompts and schedules need Integrations-View / Integrations-Manage. Custom objects need Custom-Objects-View / -Manage (records) / -Admin (types); contacts need the Tasks product and Contacts-View / -Manage; prompt presets need the Chat product. A call without permission returns `isError: true` with text like `403: forbidden`.
+- **Permissions and licenses**: writes need the matching role permission (agent config needs Agents-Edit; branch attachments, functions, actions, mail templates, webhooks, mail hooks, and secrets need Integrations-Manage; tasks need the Tasks product; changes need Tasks-Manage). Reads need the view permission. Phone numbers, call flows and call queues need Telephony-View / Telephony-Manage (SIP trunk health needs Telephony-View); audio prompts and schedules need Integrations-View / Integrations-Manage. Custom objects need Custom-Objects-View / -Manage (records) / -Admin (types); contacts need the Tasks product and Contacts-View / -Manage; prompt presets need the Chat product. A call without permission returns `isError: true` with text like `403: forbidden`.
 - **Errors**: a failed call returns `isError: true` and a message like `404: agent not found` or `422: <validation detail>`. Read the status and detail, fix the arguments, and retry.
 - **Nested JSON fields** (agent config, function/action parameter schema, task type statuses, trigger conditions and actions, mail variables) are passed as JSON exactly as the matching `get` returns them. The safe pattern for any edit is: get, modify, send back.
 
