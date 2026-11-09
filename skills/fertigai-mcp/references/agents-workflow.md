@@ -97,9 +97,10 @@ In short: write shared instructions once in `config.system_prompt`, give the Sta
 
 ### call
 ```
-{ "max_duration": 600, "silence_timeout": 10 }
+{ "max_duration": 600, "silence_timeout": 10, "echo_cancellation": false }
 ```
 Seconds. `max_duration` auto-hangs up; `silence_timeout` re-prompts after silence.
+`echo_cancellation` removes the agent's own voice when it comes back through the caller's phone (speakerphone). Phone calls only; default off, and absent on write means off, so send it with every `call` update.
 
 ### post_call_analysis
 ```
