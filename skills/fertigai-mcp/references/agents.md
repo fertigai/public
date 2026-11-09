@@ -43,7 +43,7 @@ The `config` section of `fertigai_agent_branch_configure` (and optionally `ferti
 | `dynamic_variables` | array | declared variables (see below) |
 | `workflow` | object | the conversation node/edge graph (see `agents-workflow.md`) |
 | `speech` | object | voice tuning: `speed`, `stability`, `similarity`, `tts_model`, `ambient_sound` |
-| `call` | object | `max_duration` (sec), `silence_timeout` (sec) |
+| `call` | object | `max_duration` (sec), `silence_timeout` (sec), `echo_cancellation` (bool) |
 | `post_call_analysis` | object | classification categories, extracted variables, summary, `actions_enabled` |
 | `security` | object | `rate_limit_per_minute` |
 | `guardrails` | object | `focus`, `manipulation`, `content` (+ 7 content categories), `custom` rules |
