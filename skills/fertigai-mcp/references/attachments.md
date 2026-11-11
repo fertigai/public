@@ -121,7 +121,7 @@ A `transfer_to_number` entry carries its transfer settings at the attachment lev
 
 Every write is checked: an unknown `number_source`, `"LLM"` without a route carrying a number, `"DYNAMIC_VARIABLE"` without a variable, and `"LLM_PROMPT"` without a prompt (or one longer than 2000 characters after trimming) are each rejected with `422`. The same rules apply to the `transfer` workflow node (see agents-workflow.md).
 
-These fields only apply to a `transfer_to_number` system-tool entry; other attachments leave them empty.
+These fields, and `transfer_policy` below, only apply to a `transfer_to_number` system-tool entry; other attachments leave them empty.
 
 ### Prompt as the number source
 ```json
@@ -138,8 +138,60 @@ Keep the prompt as narrow as you can. The agent can dial any number the prompt a
 Whichever source supplies it, a number is cleaned before dialling: spaces (ordinary, tab, and the non-breaking and thin kinds), hyphens (ordinary and non-breaking), parentheses, dots and slashes are removed. What remains must be digits, `*`, `#` and an optional leading `+`, with at least one digit and at most 32 characters. Anything else and the transfer is refused. These checks run when the call is placed, not when the configuration is saved: a number that fails them saves without error, and the transfer fails during the call.
 
 - National numbers (`030 1234`) and internal extensions (`23`) are fine. A number with a leading zero is dialled as written; a bare international number (7 to 15 digits, no leading zero) gets its `+`.
-- The `(0)` notation is not understood, and it is not an error either: `+49 (0)30 1234` becomes `+490301234` and dials a number nobody answers. Write `+49 30 1234`.
+- The `(0)` notation is not understood when dialling, and it is not an error either: `+49 (0)30 1234` becomes `+490301234` and dials a number nobody answers. Write `+49 30 1234`. Transfer rules (below) do recognise it when they compare numbers.
 - Letters are never allowed, and a percent-escaped character (`%23` for `#`) is refused rather than decoded.
+
+### Transfer rules: opening hours, number rules, rewrites
+An optional `transfer_policy` on a `transfer_to_number` entry is checked every time the agent transfers:
+```json
+{ "system_tool_type": "transfer_to_number",
+  "number_source": "LLM_PROMPT",
+  "transfer_prompt": "Dial the number the caller asks for.",
+  "transfer_policy": {
+    "schedule_id": "sch_...",
+    "closed_instruction": "We are closed right now. Offer to take a message instead.",
+    "default_action": "BLOCK",
+    "rules": [
+      { "action": "ALLOW", "kind": "PREFIX", "value": "+49 30" },
+      { "action": "BLOCK", "kind": "EXACT", "value": "+49 30 1234567" }
+    ],
+    "blocked_instruction": "I cannot connect you to that number. Ask how else you can help.",
+    "rewrites": [
+      { "kind": "EXACT", "from": "+49 30 1111111", "to": "+49 30 2222222" },
+      { "kind": "PREFIX", "from": "+49 30 555", "to": "+49 30 666" }
+    ]
+  } }
+```
+The checks run in this order, and the first refusal ends the check:
+
+1. **Opening hours.** With a `schedule_id`, the transfer is refused while that schedule is closed, and the agent receives `closed_instruction`. The schedule is a workspace schedule (`fertigai_schedules_*`, see telephony.md), evaluated as call flows evaluate it: its timezone, date overrides and holidays. No `schedule_id`: open at any time.
+2. **Number rules.** The number the agent asked for starts at `default_action` (`ALLOW` or `BLOCK`; empty means `ALLOW`). Then every rule that matches it is applied in order, so the last matching rule decides. A blocked number is refused, and the agent receives `blocked_instruction`. Rules check the requested number, before any rewrite.
+3. **Rewrites.** The last rewrite whose `from` matches the requested number changes the dialled number, once (rewrites do not chain). `EXACT` replaces the whole number with `to`. `PREFIX` replaces the matched beginning with `to` and keeps the rest, so in the example `+49 30 555 0000` dials `+49306660000`. No match: the number is dialled as usual.
+
+A refusal is the transfer tool's result: the agent reads the instruction and answers the caller, and the call goes on. An empty `closed_instruction` or `blocked_instruction` uses a built-in default, which is in German. Set your own for agents that speak another language. A transfer that passes all three checks behaves exactly as before.
+
+Fields:
+- `kind`: `EXACT` matches the whole number. `PREFIX` matches numbers that start with the value.
+- `rules`: at most 20 entries of `{ action, kind, value }`, with `action` `ALLOW` or `BLOCK`.
+- `rewrites`: at most 20 entries of `{ kind, from, to }`.
+- `closed_instruction` and `blocked_instruction`: at most 500 characters each.
+- Every number (`value`, `from`, `to`): digits, `*` and `#` after an optional `+`, 1 to 32 characters once formatting (spaces, hyphens, parentheses, dots, slashes) is removed.
+- `*` is a dialable character, not a wildcard. A rule `PREFIX` `*` matches only numbers that start with `*`. To block or allow every number, set `default_action`.
+- A `PREFIX` value needs digits after the country code. A bare `+` or `00` is rejected with `Use a country code, e.g. +43`.
+- A `PREFIX` value that ends in `*` after its digits (`0900*`) is rejected: the prefix already covers everything after it. Star codes such as `**21*` stay valid.
+
+How numbers are compared: rules and rewrites compare a normalised form of both numbers, so the agent's way of saying a number does not matter.
+- Formatting is removed, a leading `00` becomes `+`, and a `(0)` after the country code is dropped.
+- A number with a single leading `0` is read as a German national number. `0176 1234567`, `+49 176 1234567`, `0049 176 1234567` and `+49 (0)176 1234567` all match each other. For other countries, write rules and rewrites with the country code (`+43 1 234`).
+- A `PREFIX` written the national way still matches: `0900` matches `+49 900 ...`.
+- Short numbers (`100`, `*1`) are compared as written.
+- A rewritten number is dialled in its international form.
+
+Saving and reading:
+- `fertigai_agent_attachments_get` returns `transfer_policy` on the entry, so read-modify-write keeps it. An entry sent without `transfer_policy` has no rules.
+- A policy that changes nothing (no schedule, no rules, no rewrites, `default_action` empty or `ALLOW`) is not stored and reads back absent, even if it has instructions.
+- Every write is checked. A field that breaks a limit is rejected with `422` naming it, for example `transferPolicy.rules[2].value: must be a number of 1 to 32 digits, * or #, optionally after a +`. A `schedule_id` that is not a schedule of this workspace is rejected with `422` `Unknown schedule: sch_...`.
+- The workflow `transfer` and `directory_transfer` nodes take the same policy in their data, as `transferPolicy` with camelCase keys (see agents-workflow.md).
 
 ## Transfer to agent: transfer_to_agent only
 A `transfer_to_agent` entry hands the call to a branch of an agent in the same workspace when a condition applies. It works like the `agent_transfer` workflow node (see agents-workflow.md), for agents without a workflow:
@@ -200,5 +252,7 @@ fertigai_agent_branch_configure {
 - Leaving a required connection role unbound, or sending a top-level `connection_public_id`: bind every role through `connection_bindings`.
 - A `number_source` the entry cannot satisfy: `"LLM"` needs a route with a number, `"DYNAMIC_VARIABLE"` a `transfer_dynamic_variable`, `"LLM_PROMPT"` a `transfer_prompt` of 1 to 2000 characters after trimming. That, and any value outside the three (including a lowercase `"llm_prompt"`, since the values are case-sensitive), is a `422`.
 - Writing a transfer number as `+49 (0)30 1234`: this is not a validation error and saves without complaint, then dials `+490301234`, which nobody answers. Write `+49 30 1234`. Letters are also caught only when the call is placed, never on save.
+- A transfer rule `*` meant as "every number": `*` is not a wildcard. Use `default_action` instead.
+- A national-format rule for a number outside Germany: a single leading `0` is read as `+49`. Write the country code.
 
 Writes need Integrations-Manage for the `attachments` section and Agents-Edit for the `config` section (both, when a call sends both).
