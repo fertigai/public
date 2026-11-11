@@ -228,6 +228,8 @@ A schedule has `id` (`sch_...`), `name` (1 to 255 bytes), `timezone` (an IANA na
 
 Any time not covered by a range is closed; an empty `rules` object is always closed. `fertigai_schedules_update` replaces name, timezone and rules: get, change, send everything back. Delete answers 409 naming the flows that still use the schedule.
 
+Agent transfers can use a schedule too, as the opening hours of their transfer rules (`schedule_id` in a `transfer_to_number` attachment's `transfer_policy`, `scheduleId` in a workflow transfer node's `transferPolicy`; see attachments.md). An update to such a schedule applies to those transfers without re-saving the agents. Delete answers 409 `schedule is used by transfers: <agent> / <branch>, ...` while any branch's transfer rules still name it. Remove the schedule from those transfers first.
+
 ### Holidays
 `fertigai_holidays_list` lists a region's statutory holidays between two dates, sorted by date, as `[{ "key": "good_friday", "date": "2026-04-03" }]`.
 - `region`: `DE` (nationwide), a German state (`DE-BW`, `DE-BY`, `DE-BE`, `DE-BB`, `DE-HB`, `DE-HH`, `DE-HE`, `DE-MV`, `DE-NI`, `DE-NW`, `DE-RP`, `DE-SL`, `DE-SN`, `DE-ST`, `DE-SH`, `DE-TH`), `AT`, or a Swiss canton (`CH-AG`, `CH-AI`, `CH-AR`, `CH-BE`, `CH-BL`, `CH-BS`, `CH-FR`, `CH-GE`, `CH-GL`, `CH-GR`, `CH-JU`, `CH-LU`, `CH-NE`, `CH-NW`, `CH-OW`, `CH-SG`, `CH-SH`, `CH-SO`, `CH-SZ`, `CH-TG`, `CH-TI`, `CH-UR`, `CH-VD`, `CH-VS`, `CH-ZG`, `CH-ZH`). There is no Switzerland-wide region.

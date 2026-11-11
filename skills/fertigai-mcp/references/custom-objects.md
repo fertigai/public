@@ -79,6 +79,7 @@ A `LOOKUP` field links a record to a record of another type (or of the same type
 
 - `target_type_key` must name a type of the workspace.
 - The value is the target record's id (`cor_...`). Reads return it in `data.<key>`; the key is absent when no record is linked.
+- Reads also return `lookup_names`: each `LOOKUP` field key mapped to the linked record's `name`, so you do not need a second call to show it. It is read-only and ignored on writes. A key is missing when there is no linked record, or when that record was deleted.
 - On a record update, `null` clears the link (not for a required field).
 
 ## Record values

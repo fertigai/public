@@ -59,8 +59,8 @@ Global; the same set is available to functions and actions.
 - `objects.get(kind, id)` -> record or `null` (missing is not an error).
 - `objects.create(kind, { name, externalId?, data? })` / `objects.update(kind, id, { name?, externalId?, data? })` -> the record. `update` merges `data` key by key; a `null` value clears that key.
 - `objects.delete(kind, id)` -> `boolean` (`false` when already gone).
-- A record is `{ id /* cor_... */, name, externalId, data, createdAt, updatedAt }`.
-- `kind` is the key of a custom object type that already exists in the workspace. Object types and their fields are set up in the portal, not over MCP yet.
+- A record is `{ id /* cor_... */, name, externalId, data, lookupNames, createdAt, updatedAt }`. `lookupNames` maps each `LOOKUP` field key to the linked record's `name` (`{}` when nothing is linked); it is read-only.
+- `kind` is the key of a custom object type that already exists in the workspace (create types with `fertigai_custom_object_types_create`, see custom-objects.md).
 
 **Short links**
 - `urlshort.shorten(url, { ttlSeconds?, oneTime? }?)` -> `Promise<string>`, the short URL. The link belongs to the running workspace (or organization) and is listed on its Short links page, where it can be revoked; `ttlSeconds` sets when it expires, `oneTime` stops it after the first visit. Links expire after 90 days unless `ttlSeconds` is given (at most 365 days). Throws on an invalid URL.

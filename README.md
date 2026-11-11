@@ -9,7 +9,7 @@ One [Agent Skill](https://agentskills.io): `skills/fertigai-mcp`. Its `SKILL.md`
 | Reference | Covers |
 |---|---|
 | `agents.md` (+ `agents-workflow.md`) | Creating and configuring agents, branches, the conversation workflow graph, and setting groups |
-| `attachments.md` | Attaching functions, system tools, and knowledge bases to a branch or workflow node |
+| `attachments.md` | Attaching functions, system tools (transfer settings and transfer rules included), and knowledge bases to a branch or workflow node |
 | `knowledge-base.md` | Knowledge base folders and file uploads (up to 5 MB), renaming, moving and deleting items |
 | `functions.md` | Custom JavaScript function tools that agents can call during a conversation |
 | `actions.md` | Automations that run in response to a conversation (for example post-call steps) |
