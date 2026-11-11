@@ -65,6 +65,7 @@ Shared MCP conventions (ids, pagination, errors, permissions) are in the skill i
 }
 ```
 - `connections`: the roles the script reads through `ctx.connections[role]` (`ctx.connection` is the `default` role). `slug` is the connection type; `connected` lists the workspace connections of that type you can bind. An entry with an empty `connections` needs no connection. Custom functions and actions declare their roles the same way (functions.md, actions.md) and are bound through the same `connection_bindings`.
+- `parameter_schema.parameters[].ui` (get only): how the portal's attach form shows a parameter: `label`, `help`, `picker`, `scope_param`, `setup_only`, `advanced`, `choice_labels`, `default_value`. The model never sees these hints. A `setup_only` parameter is configured when you attach the entry, not by the model: give it a `Static` source (see attachments.md).
 - `attachable`: every required role has at least one connected candidate and the entry can run. You can attach an entry whose required role has no candidate; it stays attached and is skipped at runtime until you bind one.
 
 ## Attaching
