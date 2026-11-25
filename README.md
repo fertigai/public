@@ -37,6 +37,13 @@ Authenticate with a workspace API key (`wsk_...`, created in workspace settings 
 
 ## Using the skill
 
+The MCP server ships this skill itself, so adding the endpoint is usually enough:
+
+- Clients that support skills over MCP (for example Claude Code and VS Code) load it from the server as `fertigai-mcp`.
+- In every other client the assistant reads it through the `fertigai_guide` tool, which returns `SKILL.md` or one reference by topic; the server's instructions tell it to.
+
+To install it by hand instead (for example in an assistant without MCP):
+
 1. Add the workspace MCP endpoint (URL + `wsk_` key) to your MCP client.
 2. Make the skill available to the assistant: copy (or upload) the single `skills/fertigai-mcp` folder, including its `references/` directory, into your assistant's skills location.
 

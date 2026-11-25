@@ -8,6 +8,10 @@ Public Agent Skills for driving a fertig.ai workspace through its MCP server. Ma
 - `skills/fertigai-mcp/references/*.md` per-domain guides, one row each in the SKILL.md catalogue table.
 - `README.md` repo overview with a reference table and connection instructions.
 
+## Source of truth
+
+`skills/fertigai-mcp` is a copy: its source lives in fertig.ai's monorepo, next to the MCP server that serves it. Do not edit it here. A bot pull request (`bot/mcp-skill-sync`) copies every change of the source, and a nightly check fails when this copy has edits the source never had. The Editing and Validate rules below apply to the source.
+
 ## Editing
 
 - Document only customer-visible behaviour: tool names, arguments, fields, limits, errors and workflows as a workspace user sees them. No internal implementation details, service names, infrastructure, environment variables or issue-tracker references in the skill text.
