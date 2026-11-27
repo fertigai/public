@@ -8,19 +8,25 @@ Shared conventions (ids, pagination, errors, permissions) are in the skill index
 ## Tools
 | Tool | Args | Notes |
 |---|---|---|
-| `fertigai_agents_list` | `search?`, `status?`, `sort?`, `order?`, `cursor?`, `page_size?` | list agents |
+| `fertigai_agents_list` | `search?`, `status?`, `sort?`, `order?`, `cursor?`, `page_size?` | list agents; `status` is `ACTIVE`, `SYNCING`, `INACTIVE` or `ERROR` |
 | `fertigai_agents_get` | `id` | returns the agent plus its full `config`, `branches`, and `active_branch_id` |
 | `fertigai_agents_create` | `name`, `config?` | creates the agent and a "Main" branch; omit `config` for a blank agent |
 | `fertigai_agents_rename` | `id`, `name` | renames the container only |
 | `fertigai_agents_delete` | `id` | deletes the agent |
 | `fertigai_agents_duplicate` | `id`, `name` | copies the agent in this workspace under a new name (see Duplicating an agent) |
 | `fertigai_agents_copy_to_workspace` | `id`, `target_workspace_slug`, `name` | copies the agent into another workspace of the same organization (see Copying an agent to another workspace) |
+| `fertigai_agents_retry_sync` | `id` | retries a failed sync; returns the agent, now `SYNCING` (see Sync status and retrying) |
 | `fertigai_agent_branch_get` | `agent_id`, `branch_id` | one branch, including its config |
 | `fertigai_agent_branch_create` | `agent_id`, `name`, `from_branch_id` | fork a branch from an existing one |
 | `fertigai_agent_branch_configure` | `agent_id`, `branch_id`, `config?`, `attachments?` | the main "configure the agent" tool: sets a branch's config and/or its function and knowledge-base attachments in one call. Each section is optional; send only what you're changing |
 | `fertigai_agent_set_active_branch` | `agent_id`, `branch_id` | make a branch the live one |
 | `fertigai_agent_branch_update` | `agent_id`, `branch_id`, `name` | renames a branch; nothing else changes |
 | `fertigai_agent_branch_delete` | `agent_id`, `branch_id` | deletes a branch with its config and attachments; irreversible |
+| `fertigai_agent_branch_dynamic_sections_get` | `agent_id`, `branch_id` | the branch's dynamic sections in prompt order (see Pre-conversation) |
+| `fertigai_agent_branch_dynamic_sections_replace` | `agent_id`, `branch_id`, `sections` | full replacement of the section list |
+| `fertigai_agent_branch_pre_conversation_functions_get` | `agent_id`, `branch_id` | the branch's pre-conversation functions in run order (see Pre-conversation) |
+| `fertigai_agent_branch_pre_conversation_functions_replace` | `agent_id`, `branch_id`, `functions` | full replacement of the function list |
+| `fertigai_agent_branch_pre_conversation_test` | `agent_id`, `branch_id`, `channel`, `caller_number?` | runs the branch's pre-conversation functions once and reports the result |
 | `fertigai_prompt_presets_list` | `cursor?`, `page_size?` | reusable prompt texts for chat agents (see Prompt presets) |
 | `fertigai_prompt_presets_create` | `name`, `content` | |
 | `fertigai_prompt_presets_update` | `id`, `name?`, `content?` | only the fields you send change |
@@ -76,6 +82,49 @@ Reading and re-sending both is the safe default: it stops a config edit from sil
 - `fertigai_agent_branch_delete` deletes a branch for good. The active branch cannot be deleted (`409`): make another branch active first. Renaming and deleting need Agents-Edit.
 - Deleting an agent, or a branch, that an `agent_transfer` node or a `transfer_to_agent` target on another branch points at is refused with `409`, naming the agent that holds the reference (and the node, for a node); change or remove the node or the target first. References held by the branch being deleted, or by the agent being deleted, do not count.
 - Editing config never changes the agent's name (use `fertigai_agents_rename`).
+
+## Sync status and retrying
+Every config change is synced to the voice engine in the background, so an agent's `status` is one of:
+- `SYNCING`: a sync is running.
+- `ACTIVE` or `INACTIVE`: no sync is running and none failed.
+- `ERROR`: the last sync failed.
+
+While the status is `ERROR`, `fertigai_agents_get` and `fertigai_agents_list` usually return an `agent_sync` object with the newest failure across all branches:
+- `reason`: `REJECTED` (the voice engine refused the configuration), `UNAVAILABLE` (the voice engine was unreachable, timed out, rate-limited or failed on its side; retrying may succeed) or `UNKNOWN`.
+- `http_status`: the status the voice engine refused the configuration with; set only for `REJECTED`.
+- `completed_at`: when the sync failed (RFC 3339), if known.
+
+`agent_sync` is absent in every other status, and can be absent on `ERROR` too; treat a missing one like `UNKNOWN`. To recover:
+1. On `REJECTED`, fix the configuration first with `fertigai_agent_branch_configure`: retrying the same configuration fails again. On `UNAVAILABLE` or `UNKNOWN`, go straight to step 2.
+2. `fertigai_agents_retry_sync { id }` restarts the sync of every branch of the agent and returns the agent, now `SYNCING`. It is safe to repeat, but the sync is not instant.
+3. Poll `fertigai_agents_get { id }` every few seconds until `status` leaves `SYNCING`. `ERROR` again means the retry failed too; read `agent_sync` again. An `UNKNOWN` failure that survives a retry is not one you can fix from here: contact support.
+
+`fertigai_agents_list { status: "ERROR" }` finds every agent whose sync failed. Retrying needs Agents-Edit.
+
+## Pre-conversation
+Before an inbound call or a chat starts, a branch can run **pre-conversation functions**. Their output can fill or switch **dynamic sections**, set declared variables, set the first message, replace the system prompt, or reject the call. All of them share a 5 second budget per conversation. Dynamic sections are titled blocks appended to the bottom of the system prompt; without a function changing it, a section renders with its default content and state.
+
+Pre-conversation is enabled per workspace. While it is off, every tool here fails with `404: pre-conversation isn't enabled for this workspace.` Don't retry: tell the user it isn't enabled.
+
+**Functions.** A pre-conversation function is an ordinary function of the workspace (see functions.md) that the branch runs before the conversation. `fertigai_agent_branch_pre_conversation_functions_get` returns `[{ id, function_id, name, run_inbound, run_chat, position, also_tool }]` in run order; `also_tool` is true when the same function is also attached to the branch or agent as a tool. `fertigai_agent_branch_pre_conversation_functions_replace` is a **full replacement**, not a patch: read the list, edit it (add, remove, reorder: the list order is the run order), and send the whole list back as `functions`. Each entry needs `function_id`, `run_inbound` (run before inbound calls) and `run_chat` (run before chats); you can send the entries as you read them, the other fields are ignored. A function you leave out is detached as a pre-conversation function (a tool attachment of the same function stays), an empty list detaches them all, and an entry with both flags false never runs. More than 20 functions, a function listed twice, or one not in the workspace is a `422`. Needs Agents-Edit and Integrations-Manage.
+
+**Dynamic sections.** `fertigai_agent_branch_dynamic_sections_get` returns `[{ id, key, title, default_content, default_enabled, position }]` in prompt order. A function addresses a section by its `key`, which is derived from the title when the section is created and never changes. `fertigai_agent_branch_dynamic_sections_replace` is a **full replacement**, not a patch:
+1. Read the list with `fertigai_agent_branch_dynamic_sections_get`.
+2. Edit it: change entries, add entries without an `id`, reorder (the list order is the prompt order), or remove entries.
+3. Send the whole list back as `sections`. You can send the entries as you read them; `key` and `position` are ignored.
+
+An entry with an `id` keeps that section and its `key`; an entry without one creates a section; a section you leave out is **deleted**, and an empty list deletes them all. `title` (1 to 120 characters), `default_content` (at most 4,000 characters) and `default_enabled` are required on every entry. More than 20 sections, a value out of bounds, or an `id` listed twice or not of this branch is a `422`. Saving sections syncs the branch like a config change, so the agent's status passes through `SYNCING` (see Sync status and retrying). Needs Agents-Edit.
+
+**Test.** `fertigai_agent_branch_pre_conversation_test { agent_id, branch_id, channel, caller_number? }` runs the branch's saved pre-conversation functions for `channel` (`voice` or `chat`); `caller_number` is a sample caller for a voice test (at most 32 characters, `+` and digits). It returns:
+  - `outcome`: `ready`, `partial`, `rejected` (with `reject_reason`) or `failed`, and the total `duration_ms`;
+  - `functions`: each function's `function_id`, `name`, `status` (`ok`, `error`, `timeout`, `skipped`, `rejected`, or `not_run` when it is off for the channel), `duration_ms`, a short `error` kind, and what it `wrote` (section keys, variables, first message, system prompt);
+  - the resulting `variables` (`name`, `value`, `source`: `function`, `default` or `system`), `sections` (`key`, `title`, `enabled`, `chars` of the final content, `source`: `function` or `default`) and `first_message` (`text`, `source`: `function`, `branch` or `preset`); a `function` source comes with its `function_id`;
+  - `prompt_replaced`: true when a function replaced the system prompt;
+  - `budget_ms`, and the final rendered `prompt` (absent when the call was rejected).
+
+- The functions run for real, so their side effects happen (mails sent, records written). Nothing is saved to the branch and the run does not count as usage.
+- At most 10 tests a minute per user or API key. Past that, or while the workspace is busy or its functions keep failing, it answers `429` and nothing runs: wait the seconds the error names, then call again.
+- Needs Agents-Edit and Integrations-Manage.
 
 ## Duplicating an agent
 `fertigai_agents_duplicate { id, name }` copies an agent within the same workspace. The copy gets one active branch, "Main", made from the source's active branch: its config, variables, classification categories, and its function, action and knowledge-base attachments (new function keys are created for the copied function attachments). Other branches, phone numbers and conversations are not copied. A source without an active branch gives `404`. Needs Agents-Edit.

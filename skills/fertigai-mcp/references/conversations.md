@@ -8,7 +8,7 @@ Shared conventions (ids, pagination, errors, permissions) are in the skill index
 ## Tools
 | Tool | Args |
 |---|---|
-| `fertigai_conversations_list` | `agent_id?`, `status?`, `date_from?`, `date_to?`, `search?`, `flag?`, `cursor?`, `page_size?` |
+| `fertigai_conversations_list` | `agent_id?`, `status?`, `channel?`, `date_from?`, `date_to?`, `search?`, `flag?`, `cursor?`, `page_size?` |
 | `fertigai_conversations_get` | `id` |
 | `fertigai_conversations_flag` | `id`, `color` |
 | `fertigai_conversations_unflag` | `id` |
@@ -18,6 +18,7 @@ Shared conventions (ids, pagination, errors, permissions) are in the skill index
 ## Filters
 - `agent_id`: limit to one agent (its `agt_` id).
 - `status`: one of `completed`, `transferred`, `dropped`.
+- `channel`: `VOICE` (calls) or `WEB_CHAT` (chats).
 - `date_from` / `date_to`: an RFC 3339 timestamp or a bare `YYYY-MM-DD` (read as midnight UTC). `date_from` is inclusive, `date_to` exclusive, so a full day is `date_from: "2026-08-11", date_to: "2026-08-12"`.
 - `search`: matches the summary and the caller number.
 - `flag`: comma-separated flag colors (for example `red,orange`), optionally including `none` for unflagged.
