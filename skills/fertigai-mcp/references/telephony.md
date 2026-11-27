@@ -1,4 +1,4 @@
-# Telephony routing (fertigai_phone_numbers_*, fertigai_call_flows_*, fertigai_call_queues_*, fertigai_audios_*, fertigai_schedules_*)
+# Telephony routing and call log (fertigai_phone_numbers_*, fertigai_call_flows_*, fertigai_call_queues_*, fertigai_audios_*, fertigai_schedules_*, fertigai_calls_*)
 
 ## Overview
 Telephony routing decides what happens when someone calls one of the workspace's phone numbers. A phone number answers in one of two ways, never both:
@@ -84,7 +84,13 @@ Shared conventions (ids, pagination, errors, permissions) are in the skill index
 | `fertigai_schedules_delete` | `id` |
 | `fertigai_holidays_list` | `region`, `from`, `to` |
 
-**Permissions**: phone numbers, blocks, branch numbers, call flows and call queues need Telephony-View to read and Telephony-Manage to change. Audio prompts, schedules and holidays need Integrations-View to read and Integrations-Manage to change.
+**Call log** (read-only)
+| Tool | Args |
+|---|---|
+| `fertigai_calls_list` | `sip_trunk_id?`, `status?`, `direction?`, `start_date?`, `end_date?`, `timezone?`, `cursor?`, `page_size?` |
+| `fertigai_calls_get` | `id` |
+
+**Permissions**: phone numbers, blocks, branch numbers, call flows and call queues need Telephony-View to read and Telephony-Manage to change. Audio prompts, schedules and holidays need Integrations-View to read and Integrations-Manage to change. The call log needs Calls-View.
 
 ## Phone numbers
 Each number has: `id` (`phn_...`), `number`, `display_name`, `type` (`MANAGED` from the platform pool, `CUSTOM` registered by you), `status` (`ACTIVE`, `PENDING`, `INACTIVE`), `kind` (`DID` a public number, `EXTENSION` an internal number of its trunk), `country_code`, `monthly_cost`, `sip_trunk_id`, `call_flow_id` (empty when not bound to a flow), `routing_editable`, `scope`, `caller_id_pref`, `called_id_pref` and `codec_override`.
@@ -148,7 +154,7 @@ A flow has `id` (`cfl_...`), `name` (1 to 255 bytes), `enabled` (default true; a
 |---|---|---|
 | `entry` | none | `start` |
 | `voice_agent` | `agentId`, `branchId` (a branch of that agent) | `agent_ended_call`, `caller_ended_call`, `transferred.picked_up`, `transferred.ended`, `failed` |
-| `redirect` | `number` (E.164), `ringTimeoutSecs?` (1 to 120, default 30) | `connected.picked_up`, `connected.ended`, `caller_ended_call`, `failed` |
+| `redirect` | `number` (an E.164 number or an internal extension of 1 to 6 digits), `ringTimeoutSecs?` (1 to 120, default 30) | `connected.picked_up`, `connected.ended`, `caller_ended_call`, `failed` |
 | `audio` | `audioId`, `loop?` (default false) | `done`, `caller_ended_call` |
 | `opening_hours` | `scheduleId` | `open`, `closed` |
 | `menu` | `audioId`, `retryAudioId?`, `entries`, `timeoutSecs?`, `interdigitSecs?`, `retries?` | `key:<digits>` per entry, `no_input`, `invalid`, `caller_ended_call` |
@@ -158,7 +164,7 @@ A flow has `id` (`cfl_...`), `name` (1 to 255 bytes), `enabled` (default true; a
 | `hang_up` | none | none |
 
 - **`voice_agent`** hands the call to an agent branch. `transferred.picked_up` fires when a transfer target answers; `transferred.ended` when that call ends.
-- **`redirect`** rings an outside number and connects the caller. `failed` covers busy, no answer within `ringTimeoutSecs`, and a rejected call.
+- **`redirect`** rings an outside number or an internal extension and connects the caller. `failed` covers busy, no answer within `ringTimeoutSecs`, and a rejected call.
 - **`audio`** plays a prompt; with `loop: true` it repeats it.
 - **`opening_hours`** takes `open` or `closed` from a schedule, at the moment the caller reaches the node.
 - **`menu`** plays `audioId` and routes on the keys pressed:
@@ -293,6 +299,25 @@ fertigai_phone_numbers_update { "id": "phn_...", "call_flow_id": "cfl_..." }
 ```
 6. Check with `fertigai_call_flows_phone_numbers { "id": "cfl_..." }`.
 
+## Call log
+Every phone call of the workspace, inbound and outbound, whichever way it was routed. It is read-only. The SIP capture (pcap) of a call is not available over MCP: download it in the portal.
+
+**List** (`fertigai_calls_list`): newest first. Each call has `public_id` (`tc_...`; pass it as `id` to `fertigai_calls_get`), `direction` (`INBOUND`, `OUTBOUND`), `status` (`INITIATED`, `RINGING`, `IN_PROGRESS`, `TRANSFERRING`, `COMPLETED`, `FAILED`, `NO_ANSWER`, `BUSY`), `from_number`, `to_number`, `agent_name`, `branch_public_id`, `end_reason`, `cost_eur_micros` (1 EUR = 1,000,000), `started_at`, `answered_at`, `ended_at`, `voice_bot_duration_seconds`, `transfer_duration_seconds`, `total_duration_seconds`, `is_test` and `anonymized_at`. Durations and cost are 0 until the call ends.
+- Filters combine with AND: `sip_trunk_id` (`st_...`; an unknown trunk gives an empty page, not every call), `status`, `direction`, and the calendar days `start_date` and `end_date` (`YYYY-MM-DD`, both inclusive) in `timezone` (IANA, default UTC). `start_date` after `end_date` is a 400.
+- Paginate with `cursor` as in SKILL.md.
+- `is_test` marks calls placed by a SIP trunk test call. They are real calls, but leave them out when you count calls or sum duration and cost.
+- A call whose numbers were removed (on the branch's instruction or by conversation retention) has `anonymized_at` set and empty numbers.
+
+**Detail** (`fertigai_calls_get` with a call's `public_id` as `id`): `call` (as in the list) plus:
+- `events`: the status timeline;
+- `transfers` (`tct_...`): each transfer attempt with its target number and outcome;
+- `ai_sessions`: each stretch an agent handled, with its conversation id (read it with `fertigai_conversations_get`);
+- `call_flow_id` and `flow_steps`: the call flow that handled the call and the nodes it passed (empty when the number was attached to an agent branch);
+- `queue_events`: queue entries and their outcome;
+- `preparation`: what the pre-conversation functions did while the call rang. Only returned when the key also has Agents-View, and absent when none ran.
+
+A call holds caller phone numbers. The tools return what the key's role may see in the portal, nothing more.
+
 ## Common mistakes
 - Trying to buy a number over MCP. There is no tool for it; buy numbers in the portal. `fertigai_phone_numbers_create` only registers a number you already own on your SIP trunk.
 - Binding a number to a flow while it is attached to a branch, or attaching it while it is bound (409). Detach or unbind first.
@@ -306,3 +331,4 @@ fertigai_phone_numbers_update { "id": "phn_...", "call_flow_id": "cfl_..." }
 - Uploading a file path or URL as `content_base64`. Send the file's bytes, base64-encoded, at most 5 MB decoded.
 - Editing the routing fields of a number whose `routing_editable` is false (422). Only the label, caller-ID settings, `call_flow_id` and `codec_override` change there.
 - Deleting a flow, queue, audio or schedule that is still in use (409 names the users). Unbind or edit those first.
+- Counting trunk test calls (`is_test: true`) in call volume, duration or cost.

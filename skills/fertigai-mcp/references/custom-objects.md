@@ -44,7 +44,7 @@ Shared conventions (ids, pagination, errors) are in the skill index (SKILL.md). 
 | `fertigai_contacts_merge` | `id` (the contact that stays), `loser_id`, `name`, `email`, `phone`, `company`, `notes`, `custom_fields?` |
 | `fertigai_contacts_tasks`, `fertigai_contacts_conversations`, `fertigai_contacts_calls` | `id`, `cursor?`, `page_size?` |
 
-Contact import, export, avatars and erasing a contact's personal data are not available over MCP: use the portal.
+Contact import, a contact's personal-data export and erasing a contact's personal data are never offered over MCP, and contact avatars are not available yet: use the portal (see SKILL.md).
 
 ## Field schema
 A custom object type's `field_schema` and the contact field schema's `fields` are arrays of field definitions, the same shape task fields use (see `references/tasks.md`):
